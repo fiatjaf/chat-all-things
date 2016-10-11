@@ -17,7 +17,21 @@ try {
 
 var db = new PouchDB('main')
 
-app.ports.pouchPut.subscribe(function (doc) { db.put(doc) })
+app.ports.pouchUpdate.subscribe(function (data) {
+  var id = data[0]
+  var key = data[1]
+  var value = data[2]
+  db.get(id, function (err, doc) {
+    if (err) {
+      console.log('failed to fetch', id, 'to update', err)
+    } else {
+      if (doc[key] !== value) {
+        doc[key] = value
+        db.put(doc)
+      }
+    }
+  })
+})
 app.ports.pouchCreate.subscribe(function (doc) {
   doc._id = cuid()
   db.put(doc)

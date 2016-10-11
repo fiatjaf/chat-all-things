@@ -58,11 +58,11 @@ type SelectStatus = None | Loading String | Focused Card
 
 type Msg
     = TypeMessage String
-    | PostMessage | ClickCard String
+    | PostMessage | ClickCard String | UpdateCardDesc String String
     | AddMessage Message | AddCard Card | FocusCard Card
     | NoOp String
 
-port pouchPut : Value -> Cmd msg
+port pouchUpdate : (String, String, Value) -> Cmd msg
 port pouchCreate : Value -> Cmd msg
 port loadCard : String -> Cmd msg
 
@@ -103,6 +103,9 @@ update msg model =
                     Focused focused ->
                         if focused.id == id then (model, Cmd.none)
                         else { model | selectedCard = Loading id } ! [ loadCard id ]
+        UpdateCardDesc id desc ->
+            model !
+            [ pouchUpdate (id, "desc", JE.string desc) ]
         FocusCard card ->
             ( case model.selectedCard of
                 None -> { model | selectedCard = Focused card }
@@ -114,7 +117,12 @@ update msg model =
         AddMessage message ->
             { model | messages = message :: model.messages } ! []
         AddCard card ->
-            { model | cards = card :: model.cards } ! []
+            { model | cards =
+                if List.any (.id >> (==) card.id) model.cards then
+                    List.map (\c -> if c.id == card.id then card else c) model.cards
+                else
+                    card :: model.cards
+            } ! []
         NoOp _ -> (model, Cmd.none)
 
 
@@ -203,7 +211,11 @@ briefCardView card =
     div [ class "card", id card.id ]
         [ b [ onClick <| ClickCard card.id ] [ text card.name ]
         , ( if card.desc == "" then text ""
-            else p [] [ text (card.desc |> String.left 60 |> (++) "...") ]
+            else p []
+                [ text <|
+                    if String.length card.desc < 63 then card.desc
+                    else card.desc |> String.left 60 |> flip (++) "..."
+                ]
           )
         ]
 
@@ -214,7 +226,13 @@ fullCardView card =
             [ b [] [ text card.name ]
             , div [ class "close", onClick <| ClickCard "" ] [ text "x" ]
             ]
-        , p [] [ text card.desc ]
+        , p
+            [ contenteditable True
+            , on "blur" <|
+                JD.object1
+                    (UpdateCardDesc card.id)
+                    (JD.at [ "target", "innerText" ] JD.string)
+            ] [ text card.desc ]
         ]
 
 
