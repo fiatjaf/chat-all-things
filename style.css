@@ -9,16 +9,23 @@ main > section {
 
 #chat {}
 #messages {}
-  .message { overflow: auto; }
-    .message .author {
+  #messages .message {
+    overflow: auto;
+    margin-bottom: 3px;
+  }
+    .message > img {
       float: left;
+      display: block;
       width: 10%;
     }
-    .message .author img { width: 100%; }
-    .message .text {
+    .message > div {
       float: left;
-      width: 90%;
+      width: 89%;
+      margin-left: 1%;
     }
+      .message > div > strong {
+        display: block;
+      }
 #input {
   clear: both;
   width: 100%;
@@ -27,3 +34,29 @@ main > section {
   #input button { width: 20%; }
 
 #cards {}
+  .card {
+    margin: 6px;
+    padding: 7px;
+    border-radius: 4px;
+    border: 2px solid #AAA;
+  }
+  #fullcard {
+    
+  }
+    .card .close {
+      float: right;
+      color: #ff0202;
+      cursor: pointer;
+    }
+  #cardlist {
+    display: flex;
+    flex-wrap: wrap;
+  }
+    #cardlist .card {
+      flex: 1;
+      width: 200px;
+      max-width: 250px;
+    }
+    #cardlist .card b {
+      cursor: pointer;
+    }

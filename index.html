@@ -22,6 +22,15 @@ app.ports.pouchCreate.subscribe(function (doc) {
   doc._id = cuid()
   db.put(doc)
 })
+app.ports.loadCard.subscribe(function (id) {
+  db.get(id, function (err, doc) {
+    if (err) {
+      console.log('could not get doc', id)
+    } else {
+      app.ports.cardLoaded.send(doc)
+    }
+  })
+})
 
 db.changes({
   live: true,
@@ -31,7 +40,6 @@ db.changes({
 }).on('change', function (change) {
   switch (change.doc.type) {
     case "message":
-      console.log(change.doc)
       app.ports.pouchMessages.send(change.doc)
       break
     case "card":
