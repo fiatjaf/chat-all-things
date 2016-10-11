@@ -1,0 +1,29 @@
+* { box-sizing: border-box }
+
+main {
+  display: flex;
+}
+main > section {
+  flex: 1;
+}
+
+#chat {}
+#messages {}
+  .message { overflow: auto; }
+    .message .author {
+      float: left;
+      width: 10%;
+    }
+    .message .author img { width: 100%; }
+    .message .text {
+      float: left;
+      width: 90%;
+    }
+#input {
+  clear: both;
+  width: 100%;
+}
+  #input input { width: 80%; }
+  #input button { width: 20%; }
+
+#cards {}

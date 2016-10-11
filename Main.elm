@@ -10,7 +10,7 @@ import Platform.Cmd as Cmd
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Navigation exposing (Location)
-import Process
+import Cmd.Extra
 import String
 import Task
 import Debug exposing (log)
@@ -65,6 +65,7 @@ type alias Author =
 type Msg
     = TypeMessage String
     | PostMessage
+    | CreateCard Card
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -73,10 +74,23 @@ update msg model =
         TypeMessage v ->
             { model | typing = v } ! []
         PostMessage ->
-            { model
-                | messages = (Message model.me model.typing) :: model.messages
-                , typing = ""
-            } ! []
+            let
+                text = model.typing |> String.trim
+                newmessage = (Message model.me text)
+                action =
+                    if String.left 5 text == "/card" then
+                        Cmd.Extra.message
+                            <| CreateCard (Card "" (String.dropLeft 5 text) [])
+                    else Cmd.none
+            in
+                { model
+                    | messages = newmessage :: model.messages
+                    , typing = ""
+                } ! [ action ]
+        CreateCard card ->
+                { model
+                    | cards = card :: model.cards
+                } ! []
 
 
 -- VIEW
@@ -86,7 +100,7 @@ view model =
     node "html" []
         [ node "link" [ rel "stylesheet", href "style.css" ] []
         , node "main" []
-            [ section [ id "chat" ] [ chatView model ]
+            [ section [ id "chat" ] [ chatView <| log "model" model ]
             , section [ id "cards" ] [ cardsView model ]
             ]
         ]
@@ -101,7 +115,7 @@ chatView model =
                 |> List.map (lazy messageView)
             )
         , node "form" [ id "input", onSubmit PostMessage ]
-            [ input [ onInput TypeMessage ] []
+            [ input [ onInput TypeMessage, value model.typing ] []
             , button [] [ text "Send" ]
             ]
         ]
@@ -118,4 +132,12 @@ messageView message =
 
 cardsView : Model -> Html Msg
 cardsView model =
-    div [] []
+    div []
+        (List.map (lazy cardView) model.cards)
+
+cardView : Card -> Html Msg
+cardView card =
+    div [ class "card" ]
+        [ b [] [ text card.name ]
+        , p [] [ text card.desc ]
+        ]
