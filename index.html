@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset=utf-8>
+<title>chat-cards</title>
+<link href=style.css rel=stylesheet>
+<body></body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/6.0.6/pouchdb.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cuid/1.3.8/browser-cuid.min.js"></script>
+<script src="/_compile/Main.elm"></script>
+<script src="bundle.js"></script>
+<script>
+var app
+try {
+  app = Elm.App.fullscreen()
+} catch (e) {
+  runElmProgram()
+}
+
+var db = new PouchDB('main')
+
+app.ports.pouchPut.subscribe(function (doc) { db.put(doc) })
+app.ports.pouchCreate.subscribe(function (doc) {
+  doc._id = cuid()
+  db.put(doc)
+})
+
+db.changes({
+  live: true,
+  include_docs: true,
+  // since: 'now',
+  return_docs: false
+}).on('change', function (change) {
+  switch (change.doc.type) {
+    case "message":
+      console.log(change.doc)
+      app.ports.pouchMessages.send(change.doc)
+      break
+    case "card":
+      app.ports.pouchCards.send(change.doc)
+      break
+  }
+}).on('error', function (err) {
+  console.log('pouchdb changes error:', err)
+})
+
+</script>
