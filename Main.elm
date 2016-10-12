@@ -235,7 +235,11 @@ messageView pictures message =
 cardsView : Model -> Html Msg
 cardsView model =
   case model.cardMode of
-    Focused card _ -> div [ id "fullcard" ] [ lazy fullCardView card ]
+    Focused card _ ->
+        div [ id "fullcard" ]
+            [ lazy fullCardView card
+            , div [ class "back", onClick <| ClickCard "" ] []
+            ]
     SearchResults query ids ->
         div [ id "searching" ] <|
             if List.length ids == 0 then
@@ -274,7 +278,7 @@ fullCardView card =
         [ div []
             [ b []
               [ text card.name
-              , div [ class "close", onClick <| ClickCard "" ] [ text "x" ]
+              -- , div [ class "close", onClick <| ClickCard "" ] [ text "x" ]
               ]
             ]
         , p
