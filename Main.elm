@@ -11,6 +11,8 @@ import Platform.Cmd as Cmd
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Navigation exposing (Location)
+import ElmTextSearch as Search
+import Debounce
 import String
 import Task
 import Debug exposing (log)
@@ -20,23 +22,36 @@ import Debug exposing (log)
 
 init : Location -> (Model, Cmd Msg)
 init _ =
-    ( Model
-        "fiatjaf"
-        [] "" [] None
-        ( Dict.fromList
-            [ ("fiatjaf", "https://secure.gravatar.com/avatar/b760f503c84d1bf47322f401066c753f.jpg?s=140")
-            ]
-        )
-    , Cmd.none
-    )
+    { me = "fiatjaf"
+    , messages = [], typing = "", cards = []
+    , cardMode = MostRecent
+    , cardSearchIndex =
+        Search.new
+            { ref = .id
+            , fields =
+                [ ( .name, 5.0 )
+                , ( .desc, 3.0 )
+                ]
+            , listFields =
+                [ ( .comments >> List.map .text, 1.0 )
+                , ( .comments >> List.map .author, 0.2 )
+                ]
+            }
+    , userPictures = Dict.fromList
+        [ ("fiatjaf", "https://secure.gravatar.com/avatar/b760f503c84d1bf47322f401066c753f.jpg?s=140")
+        ]
+    , debouncer = Debounce.init
+    } ! []
 
 type alias Model =
     { me : String
     , messages : List Message
     , typing : String
     , cards : List Card
-    , selectedCard : SelectStatus
+    , cardSearchIndex : Search.Index Card
+    , cardMode : CardMode
     , userPictures : Dict String String
+    , debouncer : Debounce.State
     }
 
 type alias Card =
@@ -52,12 +67,14 @@ type alias Message =
     , text : String
     }
 
-type SelectStatus = None | Loading String | Focused Card
+type CardMode = MostRecent | SearchResults (List String) | Loading String | Focused Card
 
 -- UPDATE
 
 type Msg
-    = TypeMessage String
+    = Deb (Debounce.Msg Msg)
+    | TypeMessage String
+    | SearchCard String
     | PostMessage | ClickCard String | UpdateCardDesc String String
     | AddMessage Message | AddCard Card | FocusCard Card
     | NoOp String
@@ -69,8 +86,24 @@ port loadCard : String -> Cmd msg
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
+        Deb a -> Debounce.update debCfg a model
         TypeMessage v ->
-            { model | typing = v } ! []
+            ( { model | typing = v }
+            , Debounce.debounceCmd debCfg <| SearchCard v
+            )
+        SearchCard v ->
+            if v == "" then
+                { model | cardMode = MostRecent } ! []
+            else
+                case Search.search v model.cardSearchIndex of
+                    Err e ->
+                        let _ = log "error searching" e
+                        in (model, Cmd.none)
+                    Ok (index, results) ->
+                        { model
+                            | cardSearchIndex = index
+                            , cardMode = SearchResults <| List.map fst results
+                        } ! []
         PostMessage ->
             let
                 text = model.typing |> String.trim
@@ -93,35 +126,42 @@ update msg model =
                 { model | typing = "" } ! [ newmessage, newcard ]
         ClickCard id ->
             if id == "" then
-                { model | selectedCard = None } ! []
+                { model | cardMode = MostRecent } ! []
             else
-                case model.selectedCard of
-                    None -> { model | selectedCard = Loading id } ! [ loadCard id ]
+                case model.cardMode of
                     Loading loadingId ->
                         if loadingId == id then (model, Cmd.none)
-                        else { model | selectedCard = Loading id } ! [ loadCard id ]
+                        else { model | cardMode = Loading id } ! [ loadCard id ]
                     Focused focused ->
                         if focused.id == id then (model, Cmd.none)
-                        else { model | selectedCard = Loading id } ! [ loadCard id ]
+                        else { model | cardMode = Loading id } ! [ loadCard id ]
+                    -- MostRecent -> { model | cardMode = Loading id } ! [ loadCard id ]
+                    _ -> { model | cardMode = Loading id } ! [ loadCard id ]
         UpdateCardDesc id desc ->
             model !
             [ pouchUpdate (id, "desc", JE.string desc) ]
         FocusCard card ->
-            ( case model.selectedCard of
-                None -> { model | selectedCard = Focused card }
+            ( case model.cardMode of
+                -- MostRecent -> { model | cardMode = Focused card }
+                -- SearchResults _ -> { model | cardMode = Focused card }
                 Loading loadingId ->
                     if loadingId /= card.id then model
-                    else { model | selectedCard = Focused card }
-                Focused _ -> { model | selectedCard = Focused card }
+                    else { model | cardMode = Focused card }
+                _ -> { model | cardMode = Focused card }
             ) ! []
         AddMessage message ->
             { model | messages = message :: model.messages } ! []
         AddCard card ->
-            { model | cards =
-                if List.any (.id >> (==) card.id) model.cards then
-                    List.map (\c -> if c.id == card.id then card else c) model.cards
-                else
-                    card :: model.cards
+            { model
+                | cards =
+                    if List.any (.id >> (==) card.id) model.cards then
+                        List.map (\c -> if c.id == card.id then card else c) model.cards
+                    else
+                        card :: model.cards
+                , cardSearchIndex =
+                    case Search.addOrUpdate card model.cardSearchIndex of
+                        Ok index -> index
+                        Err _ -> model.cardSearchIndex
             } ! []
         NoOp _ -> (model, Cmd.none)
 
@@ -197,8 +237,19 @@ messageView pictures message =
 
 cardsView : Model -> Html Msg
 cardsView model =
-  case model.selectedCard of
+  case model.cardMode of
     Focused card -> div [ id "fullcard" ] [ lazy fullCardView card ]
+    SearchResults ids ->
+        if List.length ids == 0 then text "no cards were found"
+        else
+            div [ id "cardlist" ]
+                [ text "searching"
+                , div [ id "searching" ]
+                    (model.cards
+                        |> List.filter (\c -> List.any ((==) c.id) ids)
+                        |> List.map (lazy briefCardView)
+                    )
+                ]
     _ ->
         div [ id "cardlist" ]
             (model.cards
@@ -235,6 +286,11 @@ fullCardView card =
             ] [ text card.desc ]
         ]
 
+
+-- HELPERS
+
+debCfg : Debounce.Config Model Msg
+debCfg = Debounce.config .debouncer (\m s -> { m | debouncer = s }) Deb 400
 
 main =
     Navigation.program
