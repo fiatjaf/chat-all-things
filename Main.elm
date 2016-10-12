@@ -67,7 +67,7 @@ type alias Message =
     , text : String
     }
 
-type CardMode = MostRecent | SearchResults (List String) | Loading String | Focused Card
+type CardMode = MostRecent | SearchResults String (List String) | Focused Card CardMode
 
 -- UPDATE
 
@@ -89,7 +89,9 @@ update msg model =
         Deb a -> Debounce.update debCfg a model
         TypeMessage v ->
             ( { model | typing = v }
-            , Debounce.debounceCmd debCfg <| SearchCard v
+            , case model.cardMode of
+                Focused _ _ -> Cmd.none
+                _ -> Debounce.debounceCmd debCfg <| SearchCard v
             )
         SearchCard v ->
             if v == "" then
@@ -102,7 +104,7 @@ update msg model =
                     Ok (index, results) ->
                         { model
                             | cardSearchIndex = index
-                            , cardMode = SearchResults <| List.map fst results
+                            , cardMode = SearchResults v (List.map fst results)
                         } ! []
         PostMessage ->
             let
@@ -123,32 +125,27 @@ update msg model =
                                 ]
                     else Cmd.none
             in
-                { model | typing = "" } ! [ newmessage, newcard ]
+                { model
+                    | typing = ""
+                    , cardMode =
+                        case model.cardMode of
+                            SearchResults _ _ -> MostRecent
+                            _ -> model.cardMode
+                } ! [ newmessage, newcard ]
         ClickCard id ->
             if id == "" then
-                { model | cardMode = MostRecent } ! []
+                { model | cardMode =
+                    case model.cardMode of
+                        Focused _ previous -> previous
+                        _ -> MostRecent
+                } ! []
             else
-                case model.cardMode of
-                    Loading loadingId ->
-                        if loadingId == id then (model, Cmd.none)
-                        else { model | cardMode = Loading id } ! [ loadCard id ]
-                    Focused focused ->
-                        if focused.id == id then (model, Cmd.none)
-                        else { model | cardMode = Loading id } ! [ loadCard id ]
-                    -- MostRecent -> { model | cardMode = Loading id } ! [ loadCard id ]
-                    _ -> { model | cardMode = Loading id } ! [ loadCard id ]
+                model ! [ loadCard id ]
         UpdateCardDesc id desc ->
             model !
             [ pouchUpdate (id, "desc", JE.string desc) ]
         FocusCard card ->
-            ( case model.cardMode of
-                -- MostRecent -> { model | cardMode = Focused card }
-                -- SearchResults _ -> { model | cardMode = Focused card }
-                Loading loadingId ->
-                    if loadingId /= card.id then model
-                    else { model | cardMode = Focused card }
-                _ -> { model | cardMode = Focused card }
-            ) ! []
+            { model | cardMode = Focused card model.cardMode } ! []
         AddMessage message ->
             { model | messages = message :: model.messages } ! []
         AddCard card ->
@@ -208,11 +205,11 @@ view model =
 chatView : Model -> Html Msg
 chatView model =
     div []
-        [ div [ id "messages" ]
+        [ Keyed.node "div" [ id "messages" ]
             ( model.messages
                 |> List.take 50
                 |> List.reverse
-                |> List.map (lazy2 messageView model.userPictures)
+                |> List.map (\m -> (m.id, lazy2 messageView model.userPictures m))
             )
         , node "form" [ id "input", onSubmit PostMessage ]
             [ input [ onInput TypeMessage, value model.typing ] []
@@ -238,23 +235,24 @@ messageView pictures message =
 cardsView : Model -> Html Msg
 cardsView model =
   case model.cardMode of
-    Focused card -> div [ id "fullcard" ] [ lazy fullCardView card ]
-    SearchResults ids ->
-        if List.length ids == 0 then text "no cards were found"
-        else
-            div [ id "cardlist" ]
-                [ text "searching"
-                , div [ id "searching" ]
+    Focused card _ -> div [ id "fullcard" ] [ lazy fullCardView card ]
+    SearchResults query ids ->
+        div [ id "searching" ] <|
+            if List.length ids == 0 then
+                [ h1 [] [ text <| "no cards were found for '" ++ query ++ "'." ] ]
+            else
+                [ h1 [] [ text <| "search results for '" ++ query ++ "':" ]
+                , Keyed.node "div" [ id "cardlist" ]
                     (model.cards
                         |> List.filter (\c -> List.any ((==) c.id) ids)
-                        |> List.map (lazy briefCardView)
+                        |> List.map (\c -> (c.id, lazy briefCardView c))
                     )
                 ]
     _ ->
-        div [ id "cardlist" ]
+        Keyed.node "div" [ id "cardlist" ]
             (model.cards
                 |> List.take 10
-                |> List.map (lazy briefCardView)
+                |> List.map (\c -> (c.id, lazy briefCardView c))
             )
 
 briefCardView : Card -> Html Msg
@@ -264,8 +262,8 @@ briefCardView card =
         , ( if card.desc == "" then text ""
             else p []
                 [ text <|
-                    if String.length card.desc < 63 then card.desc
-                    else card.desc |> String.left 60 |> flip (++) "..."
+                    if String.length card.desc < 148 then card.desc
+                    else card.desc |> String.left 145 |> flip (++) "..."
                 ]
           )
         ]
@@ -274,8 +272,10 @@ fullCardView : Card -> Html Msg
 fullCardView card =
     div [ class "card", id card.id ]
         [ div []
-            [ b [] [ text card.name ]
-            , div [ class "close", onClick <| ClickCard "" ] [ text "x" ]
+            [ b []
+              [ text card.name
+              , div [ class "close", onClick <| ClickCard "" ] [ text "x" ]
+              ]
             ]
         , p
             [ contenteditable True
