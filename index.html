@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset=utf-8>
 <title>chat-cards</title>
-<link href=style.css rel=stylesheet>
+<link href=bundle.css rel=stylesheet>
 <body></body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/6.0.6/pouchdb.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cuid/1.3.8/browser-cuid.min.js"></script>
@@ -12,22 +12,24 @@ var app
 try {
   app = Elm.App.fullscreen()
 } catch (e) {
+  var stylesheet = document.querySelector('link')
+  stylesheet.parentNode.removeChild(stylesheet)
   runElmProgram()
 }
 
 var db = new PouchDB('main')
 
-app.ports.pouchUpdate.subscribe(function (data) {
+app.ports.updateCardContents.subscribe(function (data) {
   var id = data[0]
-  var key = data[1]
+  var index = data[1]
   var value = data[2]
-  db.get(id, function (err, doc) {
+  db.get(id, function (err, card) {
     if (err) {
       console.log('failed to fetch', id, 'to update', err)
     } else {
-      if (doc[key] !== value) {
-        doc[key] = value
-        db.put(doc)
+      if (card.contents[index] !== value) {
+        card.contents[index] = value
+        db.put(card)
       }
     }
   })
