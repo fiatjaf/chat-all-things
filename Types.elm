@@ -2,12 +2,12 @@ module Types exposing (..)
 
 import Json.Decode as JD exposing ((:=))
 import Json.Encode as JE exposing (Value)
-
+import Array exposing (Array)
 
 type alias Card =
     { id : String
     , name : String
-    , contents: List Content
+    , contents: Array Content
     , comments : List Message
     }
 
@@ -18,7 +18,7 @@ cardDecoder = JD.object4 Card
     ("_id" := JD.string)
     ("name" := JD.string)
     ("contents" :=
-        ( JD.list <|
+        ( JD.array <|
             JD.oneOf
                 [ JD.object1 Text JD.string
                 , JD.object1 Conversation <| JD.list messageDecoder
@@ -27,15 +27,15 @@ cardDecoder = JD.object4 Card
     )
     (JD.succeed [])
 
-encodeCard : String -> List Content -> Value
+encodeCard : String -> Array Content -> Value
 encodeCard name contents =
     JE.object
         [ ("type", JE.string "card")
         , ("name", JE.string name )
         , 
             ( "contents"
-            , JE.list <|
-                List.map encodeContent contents
+            , JE.array <|
+                Array.map encodeContent contents
             )
         ]
 

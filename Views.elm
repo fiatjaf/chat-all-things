@@ -6,6 +6,7 @@ import Html.Events exposing (..)
 import Html.Keyed as Keyed
 import Html.Lazy exposing (..)
 import Dict exposing (Dict)
+import Array
 import Json.Decode as JD exposing ((:=), decodeValue)
 
 import State exposing (Model, CardMode(..),
@@ -107,11 +108,13 @@ cardsView model =
 briefCardView : Card -> Html Msg
 briefCardView card =
     div [ class "card", id card.id ]
-        <| (::)
-            ( b [ onClick <| ClickCard card.id ] [ text card.name ] )
-            ( List.indexedMap (cardContentView card False) card.contents
-                |> List.reverse
-            )
+        [ div []
+            [ b [ onClick <| ClickCard card.id ] [ text card.name ]
+            , div []
+                <| Array.toList
+                <| Array.indexedMap (cardContentView card False) card.contents
+            ]
+        ]
 
 fullCardView : Card -> Html Msg
 fullCardView card =
@@ -119,12 +122,11 @@ fullCardView card =
         [ div []
             [ b [] [ text card.name ]
             ]
-        , div [] <| List.reverse <|
-            ( a
-                [ class "add-content"
-                , onClick <| UpdateCardContents Add
-                ] [ text "..." ]
-            ) :: ( List.indexedMap (cardContentView card True) card.contents )
+        , div []
+            <| Array.toList
+            <| Array.indexedMap (cardContentView card True) card.contents
+        , a
+            [ class "add-content" , onClick <| UpdateCardContents Add ] [ text "..." ]
         ]
 
 cardContentView : Card -> Bool -> Int -> Content -> Html Msg

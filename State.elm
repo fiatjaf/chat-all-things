@@ -63,7 +63,7 @@ update msg model =
                 newcard =
                     if String.left 5 text == "/card" then
                         pouchCreate <|
-                            encodeCard (String.dropLeft 5 text) []
+                            encodeCard (String.dropLeft 5 text) Array.empty
                     else Cmd.none
             in
                 { model
@@ -99,7 +99,7 @@ update msg model =
                             ]
                         Add ->
                             { model | cardMode = Focused
-                                { card | contents = Text "" :: card.contents }
+                                { card | contents = Array.push (Text "") card.contents }
                                 prev
                             } ! []
                         _ -> model ! []
