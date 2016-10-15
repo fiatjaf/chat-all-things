@@ -3,9 +3,10 @@ port module State exposing (..)
 import String
 import Array exposing (Array)
 import Dict exposing (Dict)
+import Json.Decode as JD exposing ((:=), decodeValue)
+import Json.Encode as JE exposing (Value)
 import Platform.Cmd as Cmd
 import Json.Encode as JE exposing (Value)
-import Navigation exposing (Location)
 import Debounce
 import ElmTextSearch as Search
 import Debug exposing (log)
@@ -142,27 +143,27 @@ type alias Model =
 
 type CardMode = MostRecent | SearchResults String (List String) | Focused Card CardMode
 
-init : Location -> (Model, Cmd Msg)
-init _ =
-    { me = "fiatjaf"
-    , messages = [], typing = "", cards = []
-    , cardMode = MostRecent
-    , cardSearchIndex =
-        Search.new
-            { ref = .id
-            , fields =
-                [ ( .name, 5.0 )
-                ]
-            , listFields =
-                [ ( .comments >> List.map .text, 1.0 )
-                , ( .comments >> List.map .author, 0.2 )
-                ]
-            }
-    , userPictures = Dict.fromList
-        [ ("fiatjaf", "https://secure.gravatar.com/avatar/b760f503c84d1bf47322f401066c753f.jpg?s=140")
-        ]
-    , debouncer = Debounce.init
-    } ! []
+
+-- SUBSCRIPTIONS
+
+port pouchMessages : (Value -> msg) -> Sub msg
+port pouchCards : (Value -> msg) -> Sub msg
+port cardLoaded : (Value -> msg) -> Sub msg
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    let
+        decodeOrFail : JD.Decoder a -> (a -> Msg) -> Value -> Msg
+        decodeOrFail decoder tagger value =
+            case decodeValue decoder value of
+                Ok decoded -> tagger decoded
+                Err err -> NoOp <| log ("error decoding " ++ (toString value)) err
+    in
+        Sub.batch
+            [ pouchMessages <| decodeOrFail messageDecoder AddMessage
+            , pouchCards <| decodeOrFail cardDecoder AddCard
+            , cardLoaded <| decodeOrFail cardDecoder FocusCard
+            ]
 
 debCfg : Debounce.Config Model Msg
 debCfg = Debounce.config .debouncer (\m s -> { m | debouncer = s }) Deb 400

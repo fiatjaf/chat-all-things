@@ -47,6 +47,11 @@ app.ports.loadCard.subscribe(function (id) {
     }
   })
 })
+app.ports.scrollChat.subscribe(function () {
+  setTimeout(function () {
+    document.getElementById('messages').scrollTop = 99999
+  }, 900)
+})
 
 db.changes({
   live: true,

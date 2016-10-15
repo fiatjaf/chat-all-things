@@ -8,8 +8,7 @@ import Html.Lazy exposing (..)
 import Dict exposing (Dict)
 import Json.Decode as JD exposing ((:=), decodeValue)
 
-import State exposing (init, update,
-                       Model, CardMode(..),
+import State exposing (Model, CardMode(..),
                        Msg(..), Action(..))
 import Types exposing (Card, Message, Content(..),
                        cardDecoder, messageDecoder,
@@ -110,7 +109,9 @@ briefCardView card =
     div [ class "card", id card.id ]
         <| (::)
             ( b [ onClick <| ClickCard card.id ] [ text card.name ] )
-            ( List.indexedMap (cardContentView card False) card.contents )
+            ( List.indexedMap (cardContentView card False) card.contents
+                |> List.reverse
+            )
 
 fullCardView : Card -> Html Msg
 fullCardView card =
