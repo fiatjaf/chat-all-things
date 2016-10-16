@@ -14,6 +14,7 @@ import Debug exposing (log)
 import Types exposing (Card, Message, Content(..),
                        cardDecoder, messageDecoder,
                        encodeCard, encodeContent, encodeMessage)
+import Helpers exposing (findIndex)
 
 -- UPDATE
 
@@ -21,7 +22,7 @@ type Msg
     = Deb (Debounce.Msg Msg)
     | TypeMessage String
     | SearchCard String
-    | PostMessage | SelectMessage String
+    | PostMessage | SelectMessage String Bool | UnselectMessages
     | ClickCard String | UpdateCardContents Action
     | AddMessage Message | AddToCard Card (List Message)
     | AddCard Card | FocusCard Card
@@ -32,6 +33,8 @@ type Action = Add | Edit Int Content | Delete Int
 port pouchCreate : Value -> Cmd msg
 port loadCard : String -> Cmd msg
 port updateCardContents: (String, Int, Value) -> Cmd msg
+
+port deselectText : Bool -> Cmd msg
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -73,11 +76,44 @@ update msg model =
                             SearchResults _ _ -> MostRecent
                             _ -> model.cardMode
                 } ! [ newmessage, newcard ]
-        SelectMessage id ->
-            { model | messages =
-                List.map
+        SelectMessage id shiftPressed ->
+            if shiftPressed then
+                let
+                    mapcomplex : List String -> Message -> Message
+                    mapcomplex acc m =
+                        if List.any ((==) m.id) acc then { m | selected = True }
+                        else { m | selected = False }
+                    accumulator m acc =
+                        if (List.any ((==) id) acc) then acc -- past the point of clicked
+                        else if List.isEmpty acc then
+                            if m.selected then m.id :: acc -- where the selection starts
+                            else acc -- the selection hasn't started yet
+                        else m.id :: acc -- the selection just keeps going
+
+                    firstselectedindex = findIndex .selected model.messages
+                    clickedindex = findIndex (.id >> (==) id) model.messages
+                    (reduce, messages) =
+                        if firstselectedindex > List.length model.messages then
+                            case model.messages of
+                                [] -> (List.foldl, model.messages)
+                                x::xs ->
+                                    (List.foldl, { x | selected = True } :: xs)
+                        else if firstselectedindex >= clickedindex then
+                            (List.foldr, model.messages)
+                        else
+                            (List.foldl, model.messages)
+                    acc = reduce accumulator [] messages
+                in
+                    { model | messages = List.map (mapcomplex acc) model.messages }
+                    ! [ deselectText True ]
+            else
+                { model | messages = List.map
                     (\m -> if m.id == id then { m | selected = not m.selected } else m)
                     model.messages
+                } ! []
+        UnselectMessages ->
+            { model | messages =
+                List.map (\m -> { m | selected = False }) model.messages
             } ! []
         ClickCard id ->
             if id == "" then

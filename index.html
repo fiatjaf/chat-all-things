@@ -52,6 +52,15 @@ app.ports.scrollChat.subscribe(function () {
     document.getElementById('messages').scrollTop = 99999
   }, 900)
 })
+app.ports.deselectText.subscribe(function () {
+  setTimeout(function () {
+    if (document.selection) {
+      document.selection.empty()
+    } else if (window.getSelection) {
+      window.getSelection().removeAllRanges()
+    }
+  }, 30)
+})
 
 db.changes({
   live: true,

@@ -42,22 +42,24 @@ chatView model =
 
 messageActionView : Model -> Html Msg
 messageActionView model =
-    case model.cardMode of
-        Focused card _ ->
-            if List.any .selected model.messages then
-                let
-                    selectedMessages = List.filter .selected model.messages
-                in
-                    div [ id "messages-action" ]
-                        [ text <| (++)
-                            (selectedMessages |> List.length |> toString)
-                            " messages selected."
-                        , a [ onClick <| AddToCard card selectedMessages ]
+    if List.any .selected model.messages then
+        let
+            selectedMessages = List.filter .selected model.messages
+            action = 
+                case model.cardMode of
+                    Focused card _ ->
+                        a [ onClick <| AddToCard card selectedMessages ]
                             [ text "add to card" ]
-                        ]
-            else
-                text ""
-        _ -> text ""
+                    _ -> a [ onClick <| UnselectMessages ] [ text "unselect" ]
+        in
+            div [ id "messages-action" ]
+                [ text <| (++)
+                    (selectedMessages |> List.length |> toString)
+                    " messages selected."
+                , action
+                ]
+    else
+        text ""
 
 messageView : Dict String String -> Message -> Html Msg
 messageView pictures message =
@@ -69,7 +71,10 @@ messageView pictures message =
         div
             [ class <| "message" ++ if message.selected then " selected" else ""
             , id message.id
-            , onClick <| SelectMessage message.id
+            , on "click"
+                <| JD.object1
+                    (SelectMessage message.id)
+                    ("shiftKey" := JD.bool)
             ]
             [ img [ src authorURL ] []
             , div []
@@ -136,8 +141,8 @@ cardContentView card editable index content =
             div
                 [ class "content text"
                 , if editable then contenteditable True else style []
-                , on "blur" <|
-                    JD.object1
+                , on "blur"
+                    <| JD.object1
                         (\v -> UpdateCardContents <| Edit index <| Text v)
                         (JD.at [ "target", "innerText" ] JD.string)
                 ] [ text val ]
