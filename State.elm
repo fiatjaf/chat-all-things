@@ -138,7 +138,9 @@ update msg model =
                                 { card | contents = Array.push (Text "") card.contents }
                                 prev
                             } ! []
-                        _ -> model ! []
+                        Delete index ->
+                            model !
+                            [ updateCardContents (card.id, index, JE.null) ]
                 _ -> model ! []
         FocusCard card ->
             { model | cardMode = Focused card model.cardMode } ! []

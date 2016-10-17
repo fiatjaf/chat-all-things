@@ -138,21 +138,31 @@ fullCardView userPictures card =
             <| Array.toList
             <| Array.indexedMap (cardContentView userPictures card) card.contents
         , a
-            [ class "add-content" , onClick <| UpdateCardContents Add ] [ text "..." ]
+            [ class "add-content ion-more"
+            , title "add text to this card"
+            , onClick <| UpdateCardContents Add
+            ] [ text "" ]
         ]
 
 cardContentView : Dict String String -> Card -> Int -> Content -> Html Msg
 cardContentView userPictures card index content =
-    case content of
-        Text val ->
-            div
-                [ class "content text"
-                , contenteditable True
-                , on "blur"
-                    <| JD.object1
-                        (\v -> UpdateCardContents <| Edit index <| Text v)
-                        (JD.at [ "target", "innerText" ] JD.string)
-                ] [ text val ]
-        Conversation messages ->
-            div [ class "content conversation" ]
-                <| List.map (lazy2 messageView userPictures) messages
+    div [ class "content" ]
+        [ case content of
+            Text val ->
+                div
+                    [ class "text"
+                    , contenteditable True
+                    , on "blur"
+                        <| JD.object1
+                            (\v -> UpdateCardContents <| Edit index <| Text v)
+                            (JD.at [ "target", "innerText" ] JD.string)
+                    ] [ text val ]
+            Conversation messages ->
+                div [ class "conversation" ]
+                    <| List.map (lazy2 messageView userPictures) messages
+        , a
+            [ class "delete ion-trash-a"
+            , title "delete"
+            , onClick <| UpdateCardContents <| Delete index
+            ] [ text "" ]
+        ]

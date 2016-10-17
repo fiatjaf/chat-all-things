@@ -1,6 +1,7 @@
 <!doctype html>
 <meta charset=utf-8>
 <title>chat-cards</title>
+<link href="http://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css" rel=stylesheet>
 <link href=bundle.css rel=stylesheet>
 <body></body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/6.0.6/pouchdb.min.js"></script>
@@ -12,8 +13,10 @@ var app
 try {
   app = Elm.App.fullscreen()
 } catch (e) {
-  var stylesheet = document.querySelector('link')
-  stylesheet.parentNode.removeChild(stylesheet)
+  var stylesheets = document.querySelectorAll('link')
+  for (var i = 0; i < stylesheets.length; i++) {
+    stylesheets[i].parentNode.removeChild(stylesheets[i])
+  }
   runElmProgram()
 }
 
@@ -27,7 +30,12 @@ app.ports.updateCardContents.subscribe(function (data) {
     if (err) {
       console.log('failed to fetch', id, 'to update', err)
     } else {
-      if (typeof card.contents[index] === 'undefined') {
+      if (value === null) {
+        if (card.contents[index]) {
+          card.contents.splice(index, 1)
+          db.put(card)
+        }
+      } else if (typeof card.contents[index] === 'undefined') {
         card.contents.push(value)
         db.put(card)
       } else if (card.contents[index] !== value) {
