@@ -42,14 +42,25 @@ update msg model =
     case msg of
         Deb a -> Debounce.update debCfg a model
         TypeMessage v ->
-            { model | typing =
-                if v |> String.endsWith "\n" then model.typing
-                else v
-            } ! [
-                case model.cardMode of
-                    Focused _ _ -> Cmd.none
-                    _ -> Debounce.debounceCmd debCfg <| SearchCard v
-            ]
+            let
+                search = 
+                    case model.cardMode of
+                        Focused _ _ -> Cmd.none
+                        _ -> Debounce.debounceCmd debCfg <| SearchCard v
+                vlen = String.length v
+                x = log "vlen" vlen
+                y = log "plen" <| String.length model.prevTyping
+                s = log "model.typing" model.typing
+                b = log "model.prevTyping" model.prevTyping
+                a = log "v" v
+            in
+                if model.typing == "" && vlen > 1 then
+                    if vlen == (String.length model.prevTyping) + 1 then
+                        { model | prevTyping = model.typing } ! []
+                    else
+                        { model | typing = v, prevTyping = model.typing } ! [ search ]
+                else
+                    { model | typing = v, prevTyping = model.typing } ! [ search ]
         SearchCard v ->
             if v == "" then
                 { model | cardMode = MostRecent } ! []
@@ -75,6 +86,7 @@ update msg model =
             in
                 { model
                     | typing = ""
+                    , prevTyping = model.typing
                     , cardMode =
                         case model.cardMode of
                             SearchResults _ _ -> MostRecent
@@ -178,6 +190,7 @@ type alias Model =
     { me : String
     , messages : List Message
     , typing : String
+    , prevTyping : String
     , cards : List Card
     , cardSearchIndex : Search.Index Card
     , cardMode : CardMode

@@ -35,23 +35,23 @@ main
 
 #messages-action
   flex 2
+  min-height 40px
 #messages
   flex 70
 #input
-  flex 1
+  flex 6
 
 #messages-action
   background-color $black
   color $back1
   padding 10px
-  margin-bottom 4px
 
   a
     float right
     cursor pointer
 
 #messages
-  height 100%
+  padding-top 4px
   overflow-x hidden
   overflow-y scroll
 
@@ -93,6 +93,7 @@ main
   & > *
     float left
     height 100%
+    font-size 16px
 
   textarea
     width 80%
@@ -171,7 +172,7 @@ main
     .add-content
       cursor pointer
       background-color $back2
-      padding 0 7px 8px
+      padding 0 8px
       border 1px solid $back2
       float right
       line-height 6px

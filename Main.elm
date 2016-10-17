@@ -19,7 +19,10 @@ import Views exposing (view)
 init : Location -> (Model, Cmd Msg)
 init _ =
     { me = "fiatjaf"
-    , messages = [], typing = "", cards = []
+    , messages = []
+    , cards = []
+    , typing = ""
+    , prevTyping = ""
     , cardMode = MostRecent
     , cardSearchIndex =
         Search.new
