@@ -75,7 +75,7 @@ update msg model =
                         case model.cardMode of
                             SearchResults _ _ -> MostRecent
                             _ -> model.cardMode
-                } ! [ newmessage, newcard ]
+                } ! [ newmessage, newcard, scrollChat 90 ]
         SelectMessage id shiftPressed ->
             if shiftPressed then
                 let
@@ -105,7 +105,7 @@ update msg model =
                     acc = reduce accumulator [] messages
                 in
                     { model | messages = List.map (mapcomplex acc) model.messages }
-                    ! [ deselectText True ]
+                    ! [ deselectText 30 ]
             else
                 { model | messages = List.map
                     (\m -> if m.id == id then { m | selected = not m.selected } else m)
@@ -145,7 +145,7 @@ update msg model =
         FocusCard card ->
             { model | cardMode = Focused card model.cardMode } ! []
         AddMessage message ->
-            { model | messages = message :: model.messages } ! []
+            { model | messages = message :: model.messages } ! [ scrollChat 10 ]
         GotCard card ->
             { model
                 | cards =

@@ -68,19 +68,19 @@ app.ports.loadCard.subscribe(function (id) {
     }
   })
 })
-app.ports.scrollChat.subscribe(function () {
+app.ports.scrollChat.subscribe(function (timeout) {
   setTimeout(function () {
     document.getElementById('messages').scrollTop = 99999
-  }, 900)
+  }, timeout)
 })
-app.ports.deselectText.subscribe(function () {
+app.ports.deselectText.subscribe(function (timeout) {
   setTimeout(function () {
     if (document.selection) {
       document.selection.empty()
     } else if (window.getSelection) {
       window.getSelection().removeAllRanges()
     }
-  }, 30)
+  }, timeout)
 })
 
 db.changes({

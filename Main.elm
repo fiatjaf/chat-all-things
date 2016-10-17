@@ -16,8 +16,6 @@ import Types exposing (Card, Message, Content(..),
 import Views exposing (view)
 
 
-port scrollChat : Bool -> Cmd msg
-
 init : Location -> (Model, Cmd Msg)
 init _ =
     { me = "fiatjaf"
@@ -38,7 +36,7 @@ init _ =
         [ ("fiatjaf", "https://secure.gravatar.com/avatar/b760f503c84d1bf47322f401066c753f.jpg?s=140")
         ]
     , debouncer = Debounce.init
-    } ! [ scrollChat True ]
+    } ! []
 
 main =
     Navigation.program
