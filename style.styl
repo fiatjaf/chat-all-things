@@ -119,10 +119,23 @@ main
   border 4px solid $back2
   background $back1
 
-  b
+  .name
     padding 2px 2px 4px 4px
     border-radius 7px
     display block
+
+    input
+      color inherit
+      background inherit
+      font-family inherit
+      font-size inherit
+      border none
+
+    span
+      margin-left 10px
+      color #aaa
+      font-family monospace
+      font-size 13px
 
 #fullcard
   position relative
@@ -194,7 +207,7 @@ main
     width 200px
     max-width 250px
 
-    b
+    .name
       cursor pointer
       &:hover
         background-color $back2

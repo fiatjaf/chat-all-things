@@ -7,10 +7,11 @@ import Html.Keyed as Keyed
 import Html.Lazy exposing (..)
 import Dict exposing (Dict)
 import Array
+import String
 import Json.Decode as JD exposing ((:=), decodeValue)
 import Debug exposing (log)
 
-import State exposing (Model, CardMode(..),
+import State exposing (Model, CardMode(..), Editing(..),
                        Msg(..), Action(..))
 import Types exposing (Card, Message, Content(..),
                        cardDecoder, messageDecoder,
@@ -55,7 +56,7 @@ messageActionView model =
             selectedMessages = List.filter .selected model.messages
             action = 
                 case model.cardMode of
-                    Focused card _ ->
+                    Focused card _ _ ->
                         a [ onClick <| AddToCard card.id selectedMessages ]
                             [ text "add to card" ]
                     _ -> a [ onClick <| UnselectMessages ] [ text "unselect" ]
@@ -94,9 +95,9 @@ messageView pictures message =
 cardsView : Model -> Html Msg
 cardsView model =
   case model.cardMode of
-    Focused card _ ->
+    Focused card _ editing ->
         div [ id "fullcard" ]
-            [ lazy2 fullCardView model.userPictures card
+            [ lazy3 fullCardView model.userPictures card editing
             , div [ class "back", onClick <| ClickCard "" ] []
             ]
     SearchResults query ids ->
@@ -121,12 +122,13 @@ cardsView model =
 briefCardView : Card -> Html Msg
 briefCardView card =
     div [ class "card", id card.id ]
-        [ div []
-            [ b [ onClick <| ClickCard card.id ] [ text card.name ]
-            , div [ class "contents" ]
-                <| Array.toList
-                <| Array.map (lazy briefCardContentView) card.contents
+        [ div [ class "name", onClick <| ClickCard card.id ]
+            [ b [] [ text card.name ]
+            , span [] [ text <| "#" ++ (String.right 5 card.id) ]
             ]
+        , div [ class "contents" ]
+            <| Array.toList
+            <| Array.map (lazy briefCardContentView) card.contents
         ]
 
 briefCardContentView : Content -> Html Msg
@@ -136,12 +138,23 @@ briefCardContentView content =
             div [] [ text val ]
         Conversation messages -> div [] [ text <| (List.length messages |> toString) ++ " messages" ]
 
-fullCardView : Dict String String -> Card -> Html Msg
-fullCardView userPictures card =
+fullCardView : Dict String String -> Card -> Editing -> Html Msg
+fullCardView userPictures card editing =
     div [ class "card", id card.id ]
-        [ div []
-            [ b [] [ text card.name ]
-            ]
+        [ div [ class "name" ] <|
+            case editing of
+                Name ->
+                    [ input
+                        [ on "blur"
+                            <| JD.object1 StopEditing
+                                (JD.at [ "target", "value" ] JD.string)
+                        , value card.name
+                        ] [ text "" ]
+                    ]
+                _ ->
+                    [ b [ onClick <| StartEditing Name ] [ text card.name ]
+                    , span [] [ text <| "#" ++ (String.right 5 card.id) ]
+                    ]
         , div [ class "contents" ]
             <| Array.toList
             <| Array.indexedMap (cardContentView userPictures card) card.contents

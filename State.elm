@@ -24,6 +24,7 @@ type Msg
     | SearchCard String
     | PostMessage | SelectMessage String Bool | UnselectMessages
     | ClickCard String | UpdateCardContents Action
+    | StartEditing Editing | StopEditing String
     | AddMessage Message | AddToCard String (List Message)
     | GotCard Card | FocusCard Card
     | NoOp String
@@ -45,7 +46,7 @@ update msg model =
             let
                 search = 
                     case model.cardMode of
-                        Focused _ _ -> Cmd.none
+                        Focused _ _ _ -> Cmd.none
                         _ -> Debounce.debounceCmd debCfg <| SearchCard v
                 vlen = String.length v
                 x = log "vlen" vlen
@@ -63,7 +64,7 @@ update msg model =
                     { model | typing = v, prevTyping = model.typing } ! [ search ]
         SearchCard v ->
             if v == "" then
-                { model | cardMode = MostRecent } ! []
+                { model | cardMode = Normal } ! []
             else
                 case Search.search v model.cardSearchIndex of
                     Err e ->
@@ -89,7 +90,7 @@ update msg model =
                     , prevTyping = model.typing
                     , cardMode =
                         case model.cardMode of
-                            SearchResults _ _ -> MostRecent
+                            SearchResults _ _ -> Normal
                             _ -> model.cardMode
                 } ! [ newmessage, newcard, scrollChat 90 ]
         SelectMessage id shiftPressed ->
@@ -135,14 +136,29 @@ update msg model =
             if id == "" then
                 { model | cardMode =
                     case model.cardMode of
-                        Focused _ previous -> previous
-                        _ -> MostRecent
+                        Focused _ previous _ -> previous
+                        _ -> Normal
                 } ! []
             else
                 model ! [ loadCard id ]
+        StartEditing editingState ->
+            case model.cardMode of
+                Focused card prev _ ->
+                    { model | cardMode = Focused card prev editingState } ! []
+                _ -> model ! []
+        StopEditing val ->
+            case model.cardMode of
+                Focused card prev editingState ->
+                    { model | cardMode =
+                        Focused card prev None
+                    } !
+                    [ updateCardContents
+                        (card.id, -1, JE.string <| String.trim val)
+                    ]
+                _ -> model ! []
         UpdateCardContents action ->
             case model.cardMode of
-                Focused card prev ->
+                Focused card prev _ ->
                     case action of
                         Edit index content ->
                             model !
@@ -153,13 +169,14 @@ update msg model =
                             { model | cardMode = Focused
                                 { card | contents = Array.push (Text "") card.contents }
                                 prev
+                                None
                             } ! []
                         Delete index ->
                             model !
                             [ updateCardContents (card.id, index, JE.null) ]
                 _ -> model ! []
         FocusCard card ->
-            { model | cardMode = Focused card model.cardMode } ! []
+            { model | cardMode = Focused card model.cardMode None } ! []
         AddMessage message ->
             { model | messages = message :: model.messages } ! [ scrollChat 10 ]
         GotCard card ->
@@ -171,7 +188,7 @@ update msg model =
                         card :: model.cards
                 , cardMode =
                     case model.cardMode of
-                        Focused _ prev -> Focused card prev
+                        Focused _ prev  _ -> Focused card prev None
                         _ -> model.cardMode
                 , cardSearchIndex =
                     case Search.addOrUpdate card model.cardSearchIndex of
@@ -198,7 +215,8 @@ type alias Model =
     , debouncer : Debounce.State
     }
 
-type CardMode = MostRecent | SearchResults String (List String) | Focused Card CardMode
+type CardMode = Normal | SearchResults String (List String) | Focused Card CardMode Editing
+type Editing = None | Name | Content Int
 
 
 -- SUBSCRIPTIONS

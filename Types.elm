@@ -3,6 +3,7 @@ module Types exposing (..)
 import Json.Decode as JD exposing ((:=))
 import Json.Encode as JE exposing (Value)
 import Array exposing (Array)
+import String
 
 type alias Card =
     { id : String
@@ -31,7 +32,7 @@ encodeCard : String -> Array Content -> Value
 encodeCard name contents =
     JE.object
         [ ("type", JE.string "card")
-        , ("name", JE.string name )
+        , ("name", JE.string <| String.trim name )
         , 
             ( "contents"
             , JE.array <|
@@ -45,7 +46,7 @@ encodeContent content =
         JE.object
             [ ("_id", JE.string message.id)
             , ("author", JE.string message.author)
-            , ("text", JE.string message.text)
+            , ("text", JE.string <| String.trim message.text)
             ]
     in case content of
         Text text -> JE.string text

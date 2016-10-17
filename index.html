@@ -30,15 +30,24 @@ app.ports.updateCardContents.subscribe(function (data) {
     if (err) {
       console.log('failed to fetch', id, 'to update', err)
     } else {
-      if (value === null) {
+      if (index === -1) {
+        // special case for updating the card name
+        if (card.name !== value) {
+          card.name = value
+          db.put(card)
+        }
+      } else if (value === null) {
+        // deleting a content
         if (card.contents[index]) {
           card.contents.splice(index, 1)
           db.put(card)
         }
       } else if (typeof card.contents[index] === 'undefined') {
+        // adding content (either text or conversation)
         card.contents.push(value)
         db.put(card)
       } else if (card.contents[index] !== value) {
+        // updating text content
         card.contents[index] = value
         db.put(card)
       }

@@ -23,7 +23,7 @@ init _ =
     , cards = []
     , typing = ""
     , prevTyping = ""
-    , cardMode = MostRecent
+    , cardMode = Normal
     , cardSearchIndex =
         Search.new
             { ref = .id
