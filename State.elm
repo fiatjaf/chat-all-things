@@ -24,8 +24,8 @@ type Msg
     | SearchCard String
     | PostMessage | SelectMessage String Bool | UnselectMessages
     | ClickCard String | UpdateCardContents Action
-    | AddMessage Message | AddToCard Card (List Message)
-    | AddCard Card | FocusCard Card
+    | AddMessage Message | AddToCard String (List Message)
+    | GotCard Card | FocusCard Card
     | NoOp String
 
 type Action = Add | Edit Int Content | Delete Int
@@ -144,23 +144,25 @@ update msg model =
             { model | cardMode = Focused card model.cardMode } ! []
         AddMessage message ->
             { model | messages = message :: model.messages } ! []
-        AddCard card ->
+        GotCard card ->
             { model
                 | cards =
                     if List.any (.id >> (==) card.id) model.cards then
                         List.map (\c -> if c.id == card.id then card else c) model.cards
                     else
                         card :: model.cards
+                , cardMode =
+                    case model.cardMode of
+                        Focused _ prev -> Focused card prev
+                        _ -> model.cardMode
                 , cardSearchIndex =
                     case Search.addOrUpdate card model.cardSearchIndex of
                         Ok index -> index
                         Err _ -> model.cardSearchIndex
             } ! []
-        AddToCard card messages ->
-            { model
-                | messages = List.map (\m -> { m | selected = False }) model.messages
-                --, card
-            } ! []
+        AddToCard id messages ->
+            { model | messages = List.map (\m -> { m | selected = False }) model.messages }
+            ! [ updateCardContents (id, 999, encodeContent <| Conversation messages) ]
         NoOp _ -> (model, Cmd.none)
 
 
@@ -197,7 +199,7 @@ subscriptions model =
     in
         Sub.batch
             [ pouchMessages <| decodeOrFail messageDecoder AddMessage
-            , pouchCards <| decodeOrFail cardDecoder AddCard
+            , pouchCards <| decodeOrFail cardDecoder GotCard
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
             ]
 

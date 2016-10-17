@@ -48,7 +48,7 @@ messageActionView model =
             action = 
                 case model.cardMode of
                     Focused card _ ->
-                        a [ onClick <| AddToCard card selectedMessages ]
+                        a [ onClick <| AddToCard card.id selectedMessages ]
                             [ text "add to card" ]
                     _ -> a [ onClick <| UnselectMessages ] [ text "unselect" ]
         in
@@ -88,7 +88,7 @@ cardsView model =
   case model.cardMode of
     Focused card _ ->
         div [ id "fullcard" ]
-            [ lazy fullCardView card
+            [ lazy2 fullCardView model.userPictures card
             , div [ class "back", onClick <| ClickCard "" ] []
             ]
     SearchResults query ids ->
@@ -115,36 +115,44 @@ briefCardView card =
     div [ class "card", id card.id ]
         [ div []
             [ b [ onClick <| ClickCard card.id ] [ text card.name ]
-            , div []
+            , div [ class "contents" ]
                 <| Array.toList
-                <| Array.indexedMap (cardContentView card False) card.contents
+                <| Array.map (lazy briefCardContentView) card.contents
             ]
         ]
 
-fullCardView : Card -> Html Msg
-fullCardView card =
+briefCardContentView : Content -> Html Msg
+briefCardContentView content =
+    case content of
+        Text val ->
+            div [] [ text val ]
+        Conversation messages -> div [] [ text <| (List.length messages |> toString) ++ " messages" ]
+
+fullCardView : Dict String String -> Card -> Html Msg
+fullCardView userPictures card =
     div [ class "card", id card.id ]
         [ div []
             [ b [] [ text card.name ]
             ]
-        , div []
+        , div [ class "contents" ]
             <| Array.toList
-            <| Array.indexedMap (cardContentView card True) card.contents
+            <| Array.indexedMap (cardContentView userPictures card) card.contents
         , a
             [ class "add-content" , onClick <| UpdateCardContents Add ] [ text "..." ]
         ]
 
-cardContentView : Card -> Bool -> Int -> Content -> Html Msg
-cardContentView card editable index content =
+cardContentView : Dict String String -> Card -> Int -> Content -> Html Msg
+cardContentView userPictures card index content =
     case content of
         Text val ->
             div
                 [ class "content text"
-                , if editable then contenteditable True else style []
+                , contenteditable True
                 , on "blur"
                     <| JD.object1
                         (\v -> UpdateCardContents <| Edit index <| Text v)
                         (JD.at [ "target", "innerText" ] JD.string)
                 ] [ text val ]
         Conversation messages ->
-            div [ class "content conversation" ] [ text "a conversation goes here" ]
+            div [ class "content conversation" ]
+                <| List.map (lazy2 messageView userPictures) messages

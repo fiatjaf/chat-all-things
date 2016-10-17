@@ -13,6 +13,7 @@ html, body
 body
   background-color $white
   color $black
+  font-size 20px
 
 main
   display flex
@@ -63,10 +64,10 @@ main
   &::-webkit-scrollbar-thumb 
     background-color darken($back1, 25)
 
-
   .message
     overflow auto
     margin-bottom 3px
+    font-size 16px
 
     &:hover
       background-color $back1
@@ -100,14 +101,14 @@ main
 
 .card
   margin 6px
-  padding 7px
-  border-radius 4px
+  padding 7px 7px
+  border-radius 7px
   border 4px solid $back2
   background $back1
 
   b
-    padding 2px
-    border-radius 3px
+    padding 2px 2px 4px 4px
+    border-radius 7px
     display block
 
 #fullcard
@@ -119,16 +120,29 @@ main
     z-index 10
     position absolute
     top 0
-    left 20%
-    width 60%
+    left 10%
+    width 80%
 
     .content
       background-color $white
       border-radius 2px
       margin 5px 0
-      padding 3px
+      padding 5px
       &.text {}
       &.conversation {}
+
+    .message
+      overflow auto
+      font-size 13px
+
+      div
+        display inline
+      img
+        height 12px
+      strong::before
+        content ' '
+      strong::after
+        content ': '
 
     .add-content
       cursor pointer
@@ -150,10 +164,17 @@ main
 #cardlist
   display flex
   flex-wrap wrap
+
   .card
     width 200px
     max-width 250px
+
     b
       cursor pointer
       &:hover
         background-color $back2
+
+    .contents
+      font-size 13px
+      max-height 40px
+      overflow hidden

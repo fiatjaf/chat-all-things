@@ -41,10 +41,16 @@ encodeCard name contents =
 
 encodeContent : Content -> Value
 encodeContent content =
-    case content of
+    let encodeMessageContent message =
+        JE.object
+            [ ("_id", JE.string message.id)
+            , ("author", JE.string message.author)
+            , ("text", JE.string message.text)
+            ]
+    in case content of
         Text text -> JE.string text
         Conversation messages ->
-            JE.list <| List.map (\m -> encodeMessage m.author m.text) messages
+            JE.list <| List.map encodeMessageContent messages
 
 type alias Message =
     { id : String

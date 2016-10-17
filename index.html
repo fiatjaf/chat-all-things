@@ -27,15 +27,28 @@ app.ports.updateCardContents.subscribe(function (data) {
     if (err) {
       console.log('failed to fetch', id, 'to update', err)
     } else {
-      if (card.contents[index] !== value) {
+      if (typeof card.contents[index] === 'undefined') {
+        card.contents.push(value)
+        db.put(card)
+      } else if (card.contents[index] !== value) {
         card.contents[index] = value
         db.put(card)
       }
     }
   })
 })
+
 app.ports.pouchCreate.subscribe(function (doc) {
-  doc._id = cuid()
+  switch (doc.type) {
+    case "message":
+      doc._id = "message-" + cuid()
+      break
+    case "card":
+      doc._id = "card-" + cuid()
+      break
+    default: return
+  }
+  delete doc.type
   db.put(doc)
 })
 app.ports.loadCard.subscribe(function (id) {
@@ -65,10 +78,9 @@ app.ports.deselectText.subscribe(function () {
 db.changes({
   live: true,
   include_docs: true,
-  // since: 'now',
   return_docs: false
 }).on('change', function (change) {
-  switch (change.doc.type) {
+  switch (change.doc._id.split('-')[0]) {
     case "message":
       app.ports.pouchMessages.send(change.doc)
       break
