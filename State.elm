@@ -34,18 +34,22 @@ port pouchCreate : Value -> Cmd msg
 port loadCard : String -> Cmd msg
 port updateCardContents: (String, Int, Value) -> Cmd msg
 
-port deselectText : Bool -> Cmd msg
+port scrollChat : Int -> Cmd msg
+port deselectText : Int -> Cmd msg
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         Deb a -> Debounce.update debCfg a model
         TypeMessage v ->
-            ( { model | typing = v }
-            , case model.cardMode of
-                Focused _ _ -> Cmd.none
-                _ -> Debounce.debounceCmd debCfg <| SearchCard v
-            )
+            { model | typing =
+                if v |> String.endsWith "\n" then model.typing
+                else v
+            } ! [
+                case model.cardMode of
+                    Focused _ _ -> Cmd.none
+                    _ -> Debounce.debounceCmd debCfg <| SearchCard v
+            ]
         SearchCard v ->
             if v == "" then
                 { model | cardMode = MostRecent } ! []

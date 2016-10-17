@@ -8,6 +8,7 @@ import Html.Lazy exposing (..)
 import Dict exposing (Dict)
 import Array
 import Json.Decode as JD exposing ((:=), decodeValue)
+import Debug exposing (log)
 
 import State exposing (Model, CardMode(..),
                        Msg(..), Action(..))
@@ -35,7 +36,14 @@ chatView model =
                 |> List.map (\m -> (m.id, lazy2 messageView model.userPictures m))
             )
         , node "form" [ id "input", onSubmit PostMessage ]
-            [ input [ onInput TypeMessage, value model.typing ] []
+            [ textarea
+                [ onInput TypeMessage
+                , on "keydown" 
+                    <| JD.object1
+                        (\c -> if c == 13 then PostMessage else NoOp "")
+                        ("keyCode" := JD.int)
+                , value model.typing
+                ] []
             , button [] [ text "Send" ]
             ]
         ]

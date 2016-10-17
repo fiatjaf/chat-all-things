@@ -90,8 +90,19 @@ main
   clear both
   width 100%
 
-  input
+  & > *
+    float left
+    height 100%
+
+  textarea
     width 80%
+    margin 0
+    overflow hidden
+    border none
+    resize vertical
+    padding 4px 8px
+    &:hover
+      outline none
   button
     width 20%
 
