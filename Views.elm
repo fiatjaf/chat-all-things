@@ -98,9 +98,16 @@ cardsView model =
     SearchResults query ids ->
         div [ id "searching" ] <|
             if List.length ids == 0 then
-                [ h1 [] [ text <| "no cards were found for '" ++ query ++ "'." ] ]
+                [ b [] [ text <| "no cards were found for '" ++ query ++ "'." ]
+                , hr [] []
+                , Keyed.node "div" [ id "cardlist" ]
+                    (model.cards
+                        |> List.take 10
+                        |> List.map (\c -> (c.id, lazy briefCardView c))
+                    )
+                ]
             else
-                [ h1 [] [ text <| "search results for '" ++ query ++ "':" ]
+                [ b [] [ text <| "search results for '" ++ query ++ "':" ]
                 , Keyed.node "div" [ id "cardlist" ]
                     (model.cards
                         |> List.filter (\c -> List.any ((==) c.id) ids)
