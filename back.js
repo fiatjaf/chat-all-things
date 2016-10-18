@@ -84,6 +84,7 @@ app.ports.pouchCreate.subscribe(function (doc) {
   }
   delete doc.type
   db.put(doc)
+  .then(() => app.ports.cardLoaded.send(doc))
 })
 app.ports.loadCard.subscribe(function (id) {
   db.get(id, function (err, doc) {
