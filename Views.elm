@@ -8,7 +8,8 @@ import Html.Lazy exposing (..)
 import Dict exposing (Dict)
 import Array
 import String
-import Json.Decode as JD exposing ((:=), decodeValue)
+import Json.Encode as JE
+import Json.Decode as JD exposing ((:=))
 import Debug exposing (log)
 
 import State exposing (Model, CardMode(..), Editing(..),
@@ -59,12 +60,14 @@ messageActionView model =
                     Focused card _ _ ->
                         a [ onClick <| AddToCard card.id selectedMessages ]
                             [ text "add to card" ]
-                    _ -> a [ onClick <| UnselectMessages ] [ text "unselect" ]
+                    _ -> a [ onClick <| AddToNewCard selectedMessages ]
+                            [ text "create a card" ]
         in
             div [ id "messages-action" ]
                 [ text <| (++)
                     (selectedMessages |> List.length |> toString)
-                    " messages selected."
+                    " messages."
+                , a [ onClick <| UnselectMessages ] [ text "unselect" ]
                 , action
                 ]
     else

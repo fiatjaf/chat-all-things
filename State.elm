@@ -25,7 +25,8 @@ type Msg
     | PostMessage | SelectMessage String Bool | UnselectMessages
     | ClickCard String | UpdateCardContents Action
     | StartEditing Editing | StopEditing String
-    | AddMessage Message | AddToCard String (List Message)
+    | GotMessage Message
+    | AddToCard String (List Message) | AddToNewCard (List Message)
     | GotCard Card | FocusCard Card
     | NoOp String
 
@@ -177,7 +178,7 @@ update msg model =
                 _ -> model ! []
         FocusCard card ->
             { model | cardMode = Focused card model.cardMode None } ! []
-        AddMessage message ->
+        GotMessage message ->
             { model | messages = message :: model.messages } ! [ scrollChat 10 ]
         GotCard card ->
             { model
@@ -198,6 +199,12 @@ update msg model =
         AddToCard id messages ->
             { model | messages = List.map (\m -> { m | selected = False }) model.messages }
             ! [ updateCardContents (id, 999, encodeContent <| Conversation messages) ]
+        AddToNewCard messages ->
+            { model | messages = List.map (\m -> { m | selected = False }) model.messages }
+            ! [
+                pouchCreate <|
+                    encodeCard "" (Array.fromList [ Conversation messages ])
+            ]
         NoOp _ -> (model, Cmd.none)
 
 
@@ -234,7 +241,7 @@ subscriptions model =
                 Err err -> NoOp <| log ("error decoding " ++ (toString value)) err
     in
         Sub.batch
-            [ pouchMessages <| decodeOrFail messageDecoder AddMessage
+            [ pouchMessages <| decodeOrFail messageDecoder GotMessage
             , pouchCards <| decodeOrFail cardDecoder GotCard
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
             ]
