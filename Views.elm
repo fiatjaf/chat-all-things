@@ -157,7 +157,12 @@ fullCardView card editing =
                         ] [ text "" ]
                     ]
                 _ ->
-                    [ b [ onClick <| StartEditing Name ] [ text card.name ]
+                    [ b
+                        [ onClick <| StartEditing Name
+                        , if card.name == "" then
+                            property "innerHTML" (JE.string "&nbsp;&nbsp;&nbsp;")
+                          else style []
+                        ] [ text card.name ]
                     , span [] [ text <| "#" ++ (String.right 5 card.id) ]
                     ]
         , div [ class "contents" ]

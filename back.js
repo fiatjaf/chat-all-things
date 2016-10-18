@@ -94,6 +94,12 @@ app.ports.loadCard.subscribe(function (id) {
     }
   })
 })
+
+app.ports.focusField.subscribe(function (selector) {
+  setTimeout(function () {
+    document.querySelector(selector).focus()
+  }, 1)
+})
 app.ports.scrollChat.subscribe(function (timeout) {
   setTimeout(function () {
     document.getElementById('messages').scrollTop = 99999

@@ -36,6 +36,7 @@ port pouchCreate : Value -> Cmd msg
 port loadCard : String -> Cmd msg
 port updateCardContents: (String, Int, Value) -> Cmd msg
 
+port focusField : String -> Cmd msg
 port scrollChat : Int -> Cmd msg
 port deselectText : Int -> Cmd msg
 
@@ -145,7 +146,8 @@ update msg model =
         StartEditing editingState ->
             case model.cardMode of
                 Focused card prev _ ->
-                    { model | cardMode = Focused card prev editingState } ! []
+                    { model | cardMode = Focused card prev editingState } !
+                    [ focusField <| "#" ++ card.id ++ " .name input" ]
                 _ -> model ! []
         StopEditing val ->
             case model.cardMode of
