@@ -211,7 +211,6 @@ type alias Model =
     , cards : List Card
     , cardSearchIndex : Search.Index Card
     , cardMode : CardMode
-    , userPictures : Dict String String
     , debouncer : Debounce.State
     }
 

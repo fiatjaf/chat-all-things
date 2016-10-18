@@ -34,7 +34,7 @@ chatView model =
             ( model.messages
                 |> List.take 50
                 |> List.reverse
-                |> List.map (\m -> (m.id, lazy2 messageView model.userPictures m))
+                |> List.map (\m -> (m.id, lazy messageView m))
             )
         , node "form" [ id "input", onSubmit PostMessage ]
             [ textarea
@@ -70,34 +70,29 @@ messageActionView model =
     else
         text ""
 
-messageView : Dict String String -> Message -> Html Msg
-messageView pictures message =
-    let
-        authorURL = case Dict.get message.author pictures of
-            Nothing -> "https://api.adorable.io/avatars/140/" ++ message.author ++ ".png"
-            Just url -> url
-    in
-        div
-            [ class <| "message" ++ if message.selected then " selected" else ""
-            , id message.id
-            , on "click"
-                <| JD.object1
-                    (SelectMessage message.id)
-                    ("shiftKey" := JD.bool)
+messageView : Message -> Html Msg
+messageView message =
+    div
+        [ class <| "message" ++ if message.selected then " selected" else ""
+        , id message.id
+        , on "click"
+            <| JD.object1
+                (SelectMessage message.id)
+                ("shiftKey" := JD.bool)
+        ]
+        [ img [ src <| "user/" ++ message.author ++ ".png" ] []
+        , div []
+            [ strong [] [ text message.author ]
+            , div [ class "text" ] [ text message.text ]
             ]
-            [ img [ src authorURL ] []
-            , div []
-                [ strong [] [ text message.author ]
-                , div [ class "text" ] [ text message.text ]
-                ]
-            ]
+        ]
 
 cardsView : Model -> Html Msg
 cardsView model =
   case model.cardMode of
     Focused card _ editing ->
         div [ id "fullcard" ]
-            [ lazy3 fullCardView model.userPictures card editing
+            [ lazy2 fullCardView card editing
             , div [ class "back", onClick <| ClickCard "" ] []
             ]
     SearchResults query ids ->
@@ -138,8 +133,8 @@ briefCardContentView content =
             div [] [ text val ]
         Conversation messages -> div [] [ text <| (List.length messages |> toString) ++ " messages" ]
 
-fullCardView : Dict String String -> Card -> Editing -> Html Msg
-fullCardView userPictures card editing =
+fullCardView : Card -> Editing -> Html Msg
+fullCardView card editing =
     div [ class "card", id card.id ]
         [ div [ class "name" ] <|
             case editing of
@@ -157,7 +152,7 @@ fullCardView userPictures card editing =
                     ]
         , div [ class "contents" ]
             <| Array.toList
-            <| Array.indexedMap (cardContentView userPictures card) card.contents
+            <| Array.indexedMap (cardContentView card) card.contents
         , a
             [ class "add-content ion-more"
             , title "add text to this card"
@@ -165,8 +160,8 @@ fullCardView userPictures card editing =
             ] [ text "" ]
         ]
 
-cardContentView : Dict String String -> Card -> Int -> Content -> Html Msg
-cardContentView userPictures card index content =
+cardContentView : Card -> Int -> Content -> Html Msg
+cardContentView card index content =
     div [ class "content" ]
         [ case content of
             Text val ->
@@ -180,7 +175,7 @@ cardContentView userPictures card index content =
                     ] [ text val ]
             Conversation messages ->
                 div [ class "conversation" ]
-                    <| List.map (lazy2 messageView userPictures) messages
+                    <| List.map (lazy messageView) messages
         , a
             [ class "delete ion-trash-a"
             , title "delete"

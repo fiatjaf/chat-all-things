@@ -35,9 +35,6 @@ init _ =
                 , ( .comments >> List.map .author, 0.2 )
                 ]
             }
-    , userPictures = Dict.fromList
-        [ ("fiatjaf", "https://secure.gravatar.com/avatar/b760f503c84d1bf47322f401066c753f.jpg?s=140")
-        ]
     , debouncer = Debounce.init
     } ! []
 
