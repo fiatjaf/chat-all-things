@@ -13,13 +13,15 @@ import Debug exposing (log)
 
 import Types exposing (Card, Message, Content(..),
                        cardDecoder, messageDecoder,
-                       encodeCard, encodeContent, encodeMessage)
+                       encodeCard, encodeContent, encodeMessage,
+                       Model, CardMode(..), Editing(..))
 import Helpers exposing (findIndex)
 
 -- UPDATE
 
 type Msg
     = Deb (Debounce.Msg Msg)
+    | OpenMenu String
     | TypeMessage String
     | SearchCard String
     | PostMessage | SelectMessage String Bool | UnselectMessages
@@ -44,6 +46,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         Deb a -> Debounce.update debCfg a model
+        OpenMenu menu -> { model | menu = menu } ! []
         TypeMessage v ->
             let
                 search = 
@@ -208,23 +211,6 @@ update msg model =
                     encodeCard "" (Array.fromList [ Conversation messages ])
             ]
         NoOp _ -> (model, Cmd.none)
-
-
--- MODEL
-
-type alias Model =
-    { me : String
-    , messages : List Message
-    , typing : String
-    , prevTyping : String
-    , cards : List Card
-    , cardSearchIndex : Search.Index Card
-    , cardMode : CardMode
-    , debouncer : Debounce.State
-    }
-
-type CardMode = Normal | SearchResults String (List String) | Focused Card CardMode Editing
-type Editing = None | Name | Content Int
 
 
 -- SUBSCRIPTIONS

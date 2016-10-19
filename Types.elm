@@ -2,8 +2,10 @@ module Types exposing (..)
 
 import Json.Decode as JD exposing ((:=))
 import Json.Encode as JE exposing (Value)
+import ElmTextSearch as Search
 import Array exposing (Array)
 import String
+import Debounce
 
 type alias Card =
     { id : String
@@ -74,3 +76,22 @@ encodeMessage author text =
         , ("author", JE.string author)
         , ("text", JE.string text)
         ]
+
+
+-- MODEL
+
+type alias Model =
+    { channel : String
+    , me : String
+    , messages : List Message
+    , menu : String
+    , typing : String
+    , prevTyping : String
+    , cards : List Card
+    , cardSearchIndex : Search.Index Card
+    , cardMode : CardMode
+    , debouncer : Debounce.State
+    }
+
+type CardMode = Normal | SearchResults String (List String) | Focused Card CardMode Editing
+type Editing = None | Name | Content Int

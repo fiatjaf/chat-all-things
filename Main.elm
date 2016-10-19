@@ -1,26 +1,33 @@
 port module App exposing (..)
 
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (..)
+import Html.Keyed as Keyed
+import Html.Lazy exposing (..)
 import Platform.Cmd as Cmd
-import Dict exposing (Dict)
 import Navigation exposing (Location)
 import Debounce
 import ElmTextSearch as Search
-import Debug exposing (log)
 
 import State exposing (update, subscriptions,
-                       Model, CardMode(..),
                        Msg(..), Action(..))
 import Types exposing (Card, Message, Content(..),
                        cardDecoder, messageDecoder,
-                       encodeCard, encodeMessage)
-import Views exposing (view)
+                       encodeCard, encodeMessage,
+                       Model, CardMode(..))
+import Views.Messages exposing (..)
+import Views.Cards exposing (..)
+import Views.Preferences exposing (..)
 
 
-init : Location -> (Model, Cmd Msg)
-init _ =
-    { me = "fiatjaf"
+init : { channel : String, me : String } -> Location -> (Model, Cmd Msg)
+init flags _ =
+    { channel = flags.channel
+    , me = flags.me
     , messages = []
     , cards = []
+    , menu = ""
     , typing = ""
     , prevTyping = ""
     , cardMode = Normal
@@ -38,8 +45,26 @@ init _ =
     , debouncer = Debounce.init
     } ! []
 
+
+-- VIEW
+
+view : Model -> Html Msg
+view model =
+    div [ id "container" ]
+        [ aside []
+            [ lazy3 buttonMenuView model.menu "channel" model.channel
+            , lazy3 buttonMenuView model.menu "user" model.me
+            ]
+        , lazy2 channelConfigView model.menu model.channel
+        , lazy2 userConfigView model.menu model.me
+        , node "main" []
+            [ section [ id "chat" ] [ chatView model ]
+            , section [ id "cards" ] [ cardsView model ]
+            ]
+        ]
+
 main =
-    Navigation.program
+    Navigation.programWithFlags
         (Navigation.makeParser (\l -> l))
         { init = init
         , view = view

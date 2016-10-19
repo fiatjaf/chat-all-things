@@ -3,7 +3,10 @@
 // run elm app
 var app
 try {
-  app = Elm.App.fullscreen()
+  app = Elm.App.fullscreen({
+    me: 'fiatjaf',
+    channel: 'taproah'
+  })
 } catch (e) {
   var stylesheets = document.querySelectorAll('link')
   for (var i = 0; i < stylesheets.length; i++) {

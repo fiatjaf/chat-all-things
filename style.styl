@@ -15,9 +15,60 @@ body
   color $black
   font-size 20px
 
-main
-  display flex
+#container
   height 100%
+
+  aside
+    height 40px
+    display flex
+    background $back1
+
+    .channel, .user
+      flex 1
+      height 100%
+      width 100%
+
+      a
+        cursor pointer
+        display block
+        padding 10px
+        height 100%
+        width 100%
+        &:hover
+          background $back2
+
+      &.active a
+        background $back2
+        &:hover
+          background lighten($back2, 10)
+
+    .channel {}
+    .user
+      text-align right
+
+#channel, #user
+  position absolute
+  display none
+  padding 18px
+
+  label, button
+    display block
+
+  &.active
+    display block
+    width 50%
+    height calc(100% - 40px)
+    background $back2
+
+#channel
+  left 0
+
+#user
+  right 0
+
+main
+  height calc(100% - 40px)
+  display flex
 
   & > section
     flex 1
@@ -58,13 +109,13 @@ main
   overflow-x hidden
   overflow-y scroll
 
-  &::-webkit-scrollbar 
+  &::-webkit-scrollbar
     width 0.6em
 
-  &::-webkit-scrollbar-track 
+  &::-webkit-scrollbar-track
     background-color $back1
 
-  &::-webkit-scrollbar-thumb 
+  &::-webkit-scrollbar-thumb
     background-color darken($back1, 25)
 
   .message
