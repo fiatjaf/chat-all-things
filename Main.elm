@@ -12,7 +12,7 @@ import ElmTextSearch as Search
 
 import State exposing (update, subscriptions,
                        Msg(..), Action(..))
-import Types exposing (Card, Message, Content(..),
+import Types exposing (Card, Message, Content(..), User,
                        cardDecoder, messageDecoder,
                        encodeCard, encodeMessage,
                        Model, CardMode(..))
@@ -21,12 +21,14 @@ import Views.Cards exposing (..)
 import Views.Preferences exposing (..)
 
 
-init : { channel : String, me : String } -> Location -> (Model, Cmd Msg)
+init : { channel : String, machineId : String, allChannels : List String }
+       -> Location -> (Model, Cmd Msg)
 init flags _ =
     { channel = flags.channel
-    , me = flags.me
+    , me = User flags.machineId flags.machineId 
     , messages = []
     , cards = []
+    , users = []
     , menu = ""
     , typing = ""
     , prevTyping = ""
@@ -39,7 +41,6 @@ init flags _ =
                 ]
             , listFields =
                 [ ( .comments >> List.map .text, 1.0 )
-                , ( .comments >> List.map .author, 0.2 )
                 ]
             }
     , debouncer = Debounce.init
@@ -53,10 +54,10 @@ view model =
     div [ id "container" ]
         [ aside []
             [ lazy3 buttonMenuView model.menu "channel" model.channel
-            , lazy3 buttonMenuView model.menu "user" model.me
+            , lazy3 buttonMenuView model.menu "user" model.me.name
             ]
         , lazy2 channelConfigView model.menu model.channel
-        , lazy2 userConfigView model.menu model.me
+        , lazy3 userConfigView model.menu model.users model.me
         , node "main" []
             [ section [ id "chat" ] [ chatView model ]
             , section [ id "cards" ] [ cardsView model ]

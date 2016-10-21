@@ -1,0 +1,42 @@
+a.button, button
+  display inline-block
+  padding 5px
+  font-size 12px
+  color #3C3C3D
+  text-shadow 1px 1px 0 #FFFFFF
+  white-space nowrap
+  overflow visible
+  cursor pointer
+  text-decoration none
+  border 1px solid #CACACA
+  border-radius 2px
+  outline none
+  zoom 1
+  line-height 1.11
+  *display inline
+  vertical-align middle
+
+button
+  margin-left 0
+  margin-right 0
+  padding 5px 5px 3px 5px
+  &::-moz-focus-inner
+    border 0
+    padding 0px
+
+a.button
+  cursor pointer
+  -moz-user-select none
+  -webkit-tap-highlight-color rgba(0,0,0,0)
+  -webkit-user-select none
+  -webkit-touch-callout none
+
+button:focus,
+a.button:hover, 
+button:hover
+  color #FFFFFF
+  border-color #388AD4
+  text-decoration none
+  text-shadow -1px -1px 0 rgba(0,0,0,0.3)
+  background-position 0 -40px
+  background-color #2D7DC5

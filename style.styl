@@ -1,3 +1,5 @@
+@require 'basic.styl';
+
 $white = whitesmoke
 $black = #1C140D
 $back1 = #F2E9E1
@@ -50,6 +52,7 @@ body
   position absolute
   display none
   padding 18px
+  font-size 22px
 
   label, button
     display block
@@ -59,6 +62,18 @@ body
     width 50%
     height calc(100% - 40px)
     background $back2
+
+  h3, p
+    margin 0 0 0 10px
+
+  img
+    height 40px
+
+  ul
+    padding 0
+    list-style none
+  li
+    margin 0
 
 #channel
   left 0

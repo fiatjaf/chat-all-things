@@ -11,9 +11,9 @@ import Debounce
 import ElmTextSearch as Search
 import Debug exposing (log)
 
-import Types exposing (Card, Message, Content(..),
-                       cardDecoder, messageDecoder,
-                       encodeCard, encodeContent, encodeMessage,
+import Types exposing (Card, Message, User, Content(..),
+                       cardDecoder, messageDecoder, userDecoder,
+                       encodeCard, encodeContent, encodeMessage, encodeUser,
                        Model, CardMode(..), Editing(..))
 import Helpers exposing (findIndex)
 
@@ -30,11 +30,13 @@ type Msg
     | GotMessage Message
     | AddToCard String (List Message) | AddToNewCard (List Message)
     | GotCard Card | FocusCard Card
+    | GotUser User | SetCurrentUser User | SetUser String String
     | NoOp String
 
 type Action = Add | Edit Int Content | Delete Int
 
 port pouchCreate : Value -> Cmd msg
+port setUserPicture : (String, String) -> Cmd msg
 port loadCard : String -> Cmd msg
 port updateCardContents: (String, Int, Value) -> Cmd msg
 
@@ -210,6 +212,23 @@ update msg model =
                 pouchCreate <|
                     encodeCard "" (Array.fromList [ Conversation messages ])
             ]
+        GotUser user ->
+            { model
+                | users =
+                    if List.any (.name >> (==) user.name) model.users then
+                        List.map (\c -> if c.name == user.name then user else c) model.users
+                    else
+                        user :: model.users
+                , me =
+                    if model.me.machineId == user.machineId then
+                        if model.me.machineId == model.me.name then user
+                        else if model.me.name == user.name then user
+                        else model.me
+                    else model.me
+            } ! []
+        SetCurrentUser user -> { model | me = user } ! []
+        SetUser name pictureURL ->
+            model ! [ setUserPicture (name, pictureURL) ]
         NoOp _ -> (model, Cmd.none)
 
 
@@ -217,7 +236,9 @@ update msg model =
 
 port pouchMessages : (Value -> msg) -> Sub msg
 port pouchCards : (Value -> msg) -> Sub msg
+port pouchUsers : (Value -> msg) -> Sub msg
 port cardLoaded : (Value -> msg) -> Sub msg
+port currentUser : (Value -> msg) -> Sub msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -231,7 +252,9 @@ subscriptions model =
         Sub.batch
             [ pouchMessages <| decodeOrFail messageDecoder GotMessage
             , pouchCards <| decodeOrFail cardDecoder GotCard
+            , pouchUsers <| decodeOrFail userDecoder GotUser
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
+            , currentUser <| decodeOrFail userDecoder SetCurrentUser
             ]
 
 debCfg : Debounce.Config Model Msg

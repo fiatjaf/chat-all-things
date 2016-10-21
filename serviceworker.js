@@ -3,7 +3,15 @@
 self.addEventListener('install', function (e) {
   console.log('INSTALL', e)
   e.waitUntil(
-    self.skipWaiting()
+    caches.open('VENDOR')
+    .then(cache =>
+      cache.addAll([
+        'https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css',
+        'https://cdnjs.cloudflare.com/ajax/libs/pouchdb/6.0.6/pouchdb.min.js',
+        'https://wzrd.in/standalone/pouchdb-ensure',
+        'https://cdnjs.cloudflare.com/ajax/libs/cuid/1.3.8/browser-cuid.min.js'
+      ]))
+    .then(() => self.skipWaiting())
   )
 })
 
@@ -20,9 +28,8 @@ self.addEventListener('activate', function (e) {
 })
 
 self.addEventListener('fetch', function (e) {
-  console.log('FETCH', e.request.url)
   var parts = e.request.url.split('/')
-  var last = parts.slice(-2)[1]
+  var last = parts.slice(-1)[0]
   if (parts.slice(-2)[0] === 'user' && last.slice(-4) === '.png') {
     e.respondWith(
       caches.open('USER-PICTURES')
@@ -41,8 +48,20 @@ self.addEventListener('fetch', function (e) {
         })
       )
     )
+  } else if (parts.length === 5 && parts[3] === 'channel') {
+    // at any URL like https://site.com/channel/<channel-name>, we serve index.html
+    e.respondWith(
+      fetch('/index.html', {mode: 'no-cors'})
+    )
   } else {
-    e.respondWith(fetch(e.request))
+    e.respondWith(
+      caches.open('VENDOR')
+      .then(cache =>
+        cache.match(e.request)
+        .then(matching => matching || Promise.reject('no-match'))
+      )
+      .catch(() => fetch(e.request))
+    )
   }
 })
 
@@ -53,7 +72,7 @@ self.addEventListener('message', function (e) {
     .then(cache => {
       return cache.match('user/' + e.data.key + '.png')
       .then(cached => {
-        if (!cached) {
+        if (!cached || !cached.ok) {
           fetch(e.data.value)
           .then(r => new Promise(function (resolve) {
             setTimeout(() => resolve(r), 1000)

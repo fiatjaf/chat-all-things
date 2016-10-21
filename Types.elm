@@ -7,6 +7,7 @@ import Array exposing (Array)
 import String
 import Debounce
 
+
 type alias Card =
     { id : String
     , name : String
@@ -33,8 +34,7 @@ cardDecoder = JD.object4 Card
 encodeCard : String -> Array Content -> Value
 encodeCard name contents =
     JE.object
-        [ ("type", JE.string "card")
-        , ("name", JE.string <| String.trim name )
+        [ ("name", JE.string <| String.trim name )
         , 
             ( "contents"
             , JE.array <|
@@ -47,7 +47,7 @@ encodeContent content =
     let encodeMessageContent message =
         JE.object
             [ ("_id", JE.string message.id)
-            , ("author", JE.string message.author)
+            , ("author", encodeUser message.author.name message.author.machineId)
             , ("text", JE.string <| String.trim message.text)
             ]
     in case content of
@@ -55,9 +55,10 @@ encodeContent content =
         Conversation messages ->
             JE.list <| List.map encodeMessageContent messages
 
+
 type alias Message =
     { id : String
-    , author : String
+    , author : User
     , text : String
     , selected : Bool
     }
@@ -65,16 +66,33 @@ type alias Message =
 messageDecoder : JD.Decoder Message
 messageDecoder = JD.object4 Message
     ("_id" := JD.string)
-    ("author" := JD.string)
+    ("author" := userDecoder)
     ("text" := JD.string)
     (JD.succeed False)
 
-encodeMessage : String -> String -> Value
+encodeMessage : User -> String -> Value
 encodeMessage author text =
     JE.object
-        [ ("type", JE.string "message")
-        , ("author", JE.string author)
+        [ ("author", encodeUser author.name author.machineId)
         , ("text", JE.string text)
+        ]
+
+
+type alias User =
+    { machineId : String
+    , name : String
+    }
+
+userDecoder : JD.Decoder User
+userDecoder = JD.object2 User
+    ("machineId" := JD.string)
+    ("name" := JD.string)
+
+encodeUser : String -> String -> Value
+encodeUser name machineId =
+    JE.object
+        [ ("name", JE.string name)
+        , ("machineId", JE.string machineId)
         ]
 
 
@@ -82,7 +100,7 @@ encodeMessage author text =
 
 type alias Model =
     { channel : String
-    , me : String
+    , me : User
     , messages : List Message
     , menu : String
     , typing : String
@@ -90,6 +108,7 @@ type alias Model =
     , cards : List Card
     , cardSearchIndex : Search.Index Card
     , cardMode : CardMode
+    , users : List User
     , debouncer : Debounce.State
     }
 
