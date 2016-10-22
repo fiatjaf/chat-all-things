@@ -83,7 +83,7 @@ app.ports.updateCardContents.subscribe(function (data) {
 app.ports.pouchCreate.subscribe(function (doc) {
   if (doc.author && doc.text) {
     doc._id = 'message-' + cuid()
-  } else if (doc.name && doc.contents) {
+  } else if ('name' in doc && doc.contents) {
     doc._id = 'card-' + cuid()
   } else {
     return

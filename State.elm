@@ -57,11 +57,6 @@ update msg model =
                         Focused _ _ _ -> Cmd.none
                         _ -> Debounce.debounceCmd debCfg <| SearchCard v
                 vlen = String.length v
-                x = log "vlen" vlen
-                y = log "plen" <| String.length model.prevTyping
-                s = log "model.typing" model.typing
-                b = log "model.prevTyping" model.prevTyping
-                a = log "v" v
             in
                 if model.typing == "" && vlen > 1 then
                     if vlen == (String.length model.prevTyping) + 1 then
