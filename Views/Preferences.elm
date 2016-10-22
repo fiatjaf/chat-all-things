@@ -11,10 +11,10 @@ import Types exposing (Model, CardMode(..), User, Editing(..))
 import State exposing (Msg(..), Action(..))
 
 
-buttonMenuView : String -> String -> String -> Html Msg
-buttonMenuView active menu label =
+buttonMenuView : String -> String -> List (Html Msg) -> Html Msg
+buttonMenuView active menu contents =
     div [ classList [ (menu, True), ("active", active == menu) ] ]
-        [ a [ onClick <| OpenMenu (if menu == active then "" else menu) ] [ text label ]
+        [ a [ onClick <| OpenMenu (if menu == active then "" else menu) ] contents
         ]
 
 channelConfigView : String -> String -> Html Msg
@@ -28,17 +28,21 @@ channelConfigView active channelName =
 userConfigView : String -> List User -> User -> Html Msg
 userConfigView active users user =
     div [ id "user", class <| if active == "user" then "active" else "" ]
-        [ div [ id "" ]
-            [ img [ src <| "/user/" ++ user.name ++ ".png" ] []
-            , text user.name
-            , br [] []
-            , text "Device: "
-            , code [] [ text user.machineId ]
+        [ text "Device: "
+        , code [] [ text user.machineId ]
+        , div [ class "profile" ]
+            [ img [ src user.pictureURL ] []
+            , span [] [ text user.name ]
             ]
         , div []
             [ h3 [] [ text "Users on this device" ]
-            , ul []
-                <| List.map (\u -> li [] [ button [] [ text u.name ] ])
+            , ul [ id "user-list" ]
+                <| List.map (\u ->
+                    li []
+                        [ img [ src u.pictureURL ] []
+                        , a [ class "button", onClick <| SelectUser u ] [ text u.name ]
+                        ]
+                    )
                 <| List.filter (\u -> u.machineId == user.machineId) users
             ]
         , h3 [] [ text "Add new user" ]

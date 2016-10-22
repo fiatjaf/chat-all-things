@@ -68,7 +68,7 @@ messageView message =
                 (SelectMessage message.id)
                 ("shiftKey" := JD.bool)
         ]
-        [ img [ src <| "/user/" ++ message.author.name ++ ".png" ] []
+        [ img [ src message.author.pictureURL ] []
         , div []
             [ strong [] [ text message.author.name ]
             , div [ class "text" ] [ text message.text ]

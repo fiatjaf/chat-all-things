@@ -1,4 +1,6 @@
-/* globals self, caches, fetch */
+/* globals self, caches, fetch, Headers, Response, Blob, randomColor */
+
+self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/randomcolor/0.4.4/randomColor.min.js')
 
 self.addEventListener('install', function (e) {
   console.log('INSTALL', e)
@@ -29,26 +31,19 @@ self.addEventListener('activate', function (e) {
 
 self.addEventListener('fetch', function (e) {
   var parts = e.request.url.split('/')
-  var last = parts.slice(-1)[0]
-  if (parts.slice(-2)[0] === 'user' && last.slice(-4) === '.png') {
+  /*if (e.request.url.slice(-4) === '.png') {
     e.respondWith(
-      caches.open('USER-PICTURES')
-      .then(cache =>
-        cache.match(e.request.url)
-        .then(resp => {
-          if (resp) {
-            return resp
-          } else {
-            return fetch('https://api.adorable.io/avatars/140/' + last.slice(0, -4) + '.png', {mode: 'no-cors'})
-            .then(response => {
-              cache.put(e.request.url, response.clone())
-              return response.clone()
-            })
-          }
-        })
-      )
+      Promise.resolve(new Response(
+        new Blob([`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" style=" background: ${randomColor()};"><g backgroundcolor="rgba(134,53,53,1)"></g></svg>`]),
+        {
+          status: 200,
+          headers: new Headers({
+            'Content-Type': 'image/svg'
+          })
+        }
+      ))
     )
-  } else if (parts.length === 5 && parts[3] === 'channel') {
+  } else */if (parts.length === 5 && parts[3] === 'channel') {
     // at any URL like https://site.com/channel/<channel-name>, we serve index.html
     e.respondWith(
       fetch('/index.html', {mode: 'no-cors'})
@@ -66,22 +61,4 @@ self.addEventListener('fetch', function (e) {
 })
 
 self.addEventListener('message', function (e) {
-  e.waitUntil(
-    // receive picture URLs from pouchdb, fetch and cache them
-    caches.open('USER-PICTURES')
-    .then(cache => {
-      return cache.match('user/' + e.data.key + '.png')
-      .then(cached => {
-        if (!cached || !cached.ok) {
-          fetch(e.data.value)
-          .then(r => new Promise(function (resolve) {
-            setTimeout(() => resolve(r), 1000)
-          }))
-          .then(response => {
-            cache.put('user/' + e.data.key + '.png', response)
-          })
-        }
-      })
-    })
-  )
 })

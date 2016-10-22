@@ -25,7 +25,7 @@ init : { channel : String, machineId : String, allChannels : List String }
        -> Location -> (Model, Cmd Msg)
 init flags _ =
     { channel = flags.channel
-    , me = User flags.machineId flags.machineId 
+    , me = User flags.machineId flags.machineId ""
     , messages = []
     , cards = []
     , users = []
@@ -53,8 +53,9 @@ view : Model -> Html Msg
 view model =
     div [ id "container" ]
         [ aside []
-            [ lazy3 buttonMenuView model.menu "channel" model.channel
-            , lazy3 buttonMenuView model.menu "user" model.me.name
+            [ lazy3 buttonMenuView model.menu "channel" [ text model.channel ]
+            , lazy3 buttonMenuView model.menu "user"
+                [ img [ src model.me.pictureURL ] [] , text model.me.name ]
             ]
         , lazy2 channelConfigView model.menu model.channel
         , lazy3 userConfigView model.menu model.users model.me

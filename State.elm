@@ -30,7 +30,7 @@ type Msg
     | GotMessage Message
     | AddToCard String (List Message) | AddToNewCard (List Message)
     | GotCard Card | FocusCard Card
-    | GotUser User | SetCurrentUser User | SetUser String String
+    | GotUser User | SelectUser User | SetUser String String
     | NoOp String
 
 type Action = Add | Edit Int Content | Delete Int
@@ -38,8 +38,9 @@ type Action = Add | Edit Int Content | Delete Int
 port pouchCreate : Value -> Cmd msg
 port setUserPicture : (String, String) -> Cmd msg
 port loadCard : String -> Cmd msg
-port updateCardContents: (String, Int, Value) -> Cmd msg
+port updateCardContents : (String, Int, Value) -> Cmd msg
 
+port userSelected : String -> Cmd msg
 port focusField : String -> Cmd msg
 port scrollChat : Int -> Cmd msg
 port deselectText : Int -> Cmd msg
@@ -226,7 +227,7 @@ update msg model =
                         else model.me
                     else model.me
             } ! []
-        SetCurrentUser user -> { model | me = user } ! []
+        SelectUser user -> { model | me = user } ! [ userSelected user.name ]
         SetUser name pictureURL ->
             model ! [ setUserPicture (name, pictureURL) ]
         NoOp _ -> (model, Cmd.none)
@@ -254,7 +255,7 @@ subscriptions model =
             , pouchCards <| decodeOrFail cardDecoder GotCard
             , pouchUsers <| decodeOrFail userDecoder GotUser
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
-            , currentUser <| decodeOrFail userDecoder SetCurrentUser
+            , currentUser <| decodeOrFail userDecoder SelectUser
             ]
 
 debCfg : Debounce.Config Model Msg

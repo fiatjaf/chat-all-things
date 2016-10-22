@@ -47,7 +47,7 @@ encodeContent content =
     let encodeMessageContent message =
         JE.object
             [ ("_id", JE.string message.id)
-            , ("author", encodeUser message.author.name message.author.machineId)
+            , ("author", encodeUser message.author.name message.author.machineId message.author.pictureURL)
             , ("text", JE.string <| String.trim message.text)
             ]
     in case content of
@@ -73,7 +73,7 @@ messageDecoder = JD.object4 Message
 encodeMessage : User -> String -> Value
 encodeMessage author text =
     JE.object
-        [ ("author", encodeUser author.name author.machineId)
+        [ ("author", encodeUser author.name author.machineId author.pictureURL)
         , ("text", JE.string text)
         ]
 
@@ -81,18 +81,25 @@ encodeMessage author text =
 type alias User =
     { machineId : String
     , name : String
+    , pictureURL : String
     }
 
 userDecoder : JD.Decoder User
-userDecoder = JD.object2 User
-    ("machineId" := JD.string)
-    ("name" := JD.string)
+userDecoder =
+    JD.customDecoder
+        ( JD.object3 User
+            ("machineId" := JD.string)
+            ("name" := JD.string)
+            ("pictureURL" := JD.string)
+        )
+        (\r -> Ok { r | pictureURL = if r.pictureURL == "" then "https://api.adorable.io/avatars/140/" ++ r.name ++ ".png" else r.pictureURL })
 
-encodeUser : String -> String -> Value
-encodeUser name machineId =
+encodeUser : String -> String -> String -> Value
+encodeUser name machineId pictureURL =
     JE.object
         [ ("name", JE.string name)
         , ("machineId", JE.string machineId)
+        , ("pictureURL", JE.string pictureURL)
         ]
 
 

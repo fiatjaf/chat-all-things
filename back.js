@@ -110,11 +110,16 @@ app.ports.setUserPicture.subscribe(function (data) {
   var userId = `user-${machineId}-${name}`
 
   db.get(userId)
-  .catch(() => ({
-    _id: userId,
-    name: name,
-    machineId: machineId
-  }))
+  .catch(() => {
+    // if the new user is being created, we should select him
+    localStorage.setItem('lastuser-' + channelName, name)
+
+    return {
+      _id: userId,
+      name: name,
+      machineId: machineId
+    }
+  })
   .then(doc => {
     doc.pictureURL = pictureURL
     return db.put(doc)
@@ -122,6 +127,9 @@ app.ports.setUserPicture.subscribe(function (data) {
   .catch(e => console.log('failed to save user with picture', e))
 })
 
+app.ports.userSelected.subscribe(function (name) {
+  localStorage.setItem('lastuser-' + channelName, name)
+})
 app.ports.focusField.subscribe(function (selector) {
   setTimeout(function () {
     document.querySelector(selector).focus()
@@ -162,14 +170,6 @@ db.changes({
       break
     case 'user':
       app.ports.pouchUsers.send(change.doc)
-
-      // also update the user picture cache
-      if (change.doc.pictureURL) {
-        navigator.serviceWorker.controller.postMessage({
-          key: change.doc.name,
-          value: change.doc.pictureURL
-        })
-      }
       break
   }
 }).on('error', function (err) {
@@ -187,9 +187,9 @@ db.allDocs({startkey: 'user-', endkey: 'user-{', include_docs: true})
   } else {
     var lastUserName = localStorage.getItem('lastuser-' + channelName)
     if (lastUserName) {
-      var user = res.rows.find(row => row.doc.name === lastUserName)
-      if (user) {
-        app.ports.currentUser.send(user)
+      var found = res.rows.find(row => row.doc.name === lastUserName)
+      if (found) {
+        app.ports.currentUser.send(found.doc)
       }
     }
   }
