@@ -103,10 +103,17 @@ encodeUser name machineId pictureURL =
         ]
 
 
+type alias Channel =
+    { name : String
+    , websocket : String
+    }
+
+
 -- MODEL
 
 type alias Model =
-    { channel : String
+    { channel : Channel
+    , channels : List String
     , me : User
     , messages : List Message
     , menu : String

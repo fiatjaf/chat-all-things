@@ -11,7 +11,7 @@ import Debounce
 import ElmTextSearch as Search
 import Debug exposing (log)
 
-import Types exposing (Card, Message, User, Content(..),
+import Types exposing (Card, Message, User, Channel, Content(..),
                        cardDecoder, messageDecoder, userDecoder,
                        encodeCard, encodeContent, encodeMessage, encodeUser,
                        Model, CardMode(..), Editing(..))
@@ -31,15 +31,18 @@ type Msg
     | AddToCard String (List Message) | AddToNewCard (List Message)
     | GotCard Card | FocusCard Card
     | GotUser User | SelectUser User | SetUser String String
+    | SelectChannel String | SetChannel String
     | NoOp String
 
 type Action = Add | Edit Int Content | Delete Int
 
 port pouchCreate : Value -> Cmd msg
 port setUserPicture : (String, String) -> Cmd msg
+port setChannel : Channel -> Cmd msg
 port loadCard : String -> Cmd msg
 port updateCardContents : (String, Int, Value) -> Cmd msg
 
+port moveToChannel : String -> Cmd msg
 port userSelected : String -> Cmd msg
 port focusField : String -> Cmd msg
 port scrollChat : Int -> Cmd msg
@@ -225,6 +228,12 @@ update msg model =
         SelectUser user -> { model | me = user } ! [ userSelected user.name ]
         SetUser name pictureURL ->
             model ! [ setUserPicture (name, pictureURL) ]
+        SetChannel websocket ->
+            let
+                channel = Channel model.channel.name websocket
+            in
+                { model | channel = channel } ! [ setChannel channel ]
+        SelectChannel channelName -> model ! [ moveToChannel channelName ]
         NoOp _ -> (model, Cmd.none)
 
 

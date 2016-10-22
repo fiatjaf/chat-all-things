@@ -7,6 +7,11 @@ if (!machineId) {
 }
 
 var channelName = location.pathname.split('/').slice(-1)[0]
+var channelConfig = JSON.parse(localStorage.getItem('channel-' + channelName)) || {
+  name: channelName,
+  lan: false,
+  websocket: 'https://black-bow.hyperdev.space/' + channelName
+}
 
 
 // setup database
@@ -19,7 +24,7 @@ setTimeout(() => db.viewCleanup(), 5000)
 var allChannels = JSON.parse(localStorage.getItem('allChannels') || '{}')
 db.allDocs({limit: 1, startkey: 'A'})
 .then(res => {
-  if (res.length) {
+  if (res.rows.length) {
     allChannels[channelName] = true
     localStorage.setItem(
       'allChannels',
@@ -34,7 +39,7 @@ var app
 try {
   app = Elm.App.fullscreen({
     machineId: machineId,
-    channel: channelName,
+    channel: channelConfig,
     allChannels: Object.keys(allChannels)
   })
 } catch (e) {
@@ -126,7 +131,13 @@ app.ports.setUserPicture.subscribe(function (data) {
   })
   .catch(e => console.log('failed to save user with picture', e))
 })
+app.ports.setChannel.subscribe(function (channel) {
+  localStorage.setItem('channel', JSON.stringify(channel))
+})
 
+app.ports.moveToChannel.subscribe(function (channelName) {
+  location.href = '/channel/' + channelName
+})
 app.ports.userSelected.subscribe(function (name) {
   localStorage.setItem('lastuser-' + channelName, name)
 })

@@ -12,7 +12,7 @@ import ElmTextSearch as Search
 
 import State exposing (update, subscriptions,
                        Msg(..), Action(..))
-import Types exposing (Card, Message, Content(..), User,
+import Types exposing (Card, Message, Content(..), User, Channel,
                        cardDecoder, messageDecoder,
                        encodeCard, encodeMessage,
                        Model, CardMode(..))
@@ -21,7 +21,7 @@ import Views.Cards exposing (..)
 import Views.Preferences exposing (..)
 
 
-init : { channel : String, machineId : String, allChannels : List String }
+init : { channel : Channel, machineId : String, allChannels : List String }
        -> Location -> (Model, Cmd Msg)
 init flags _ =
     { channel = flags.channel
@@ -29,6 +29,7 @@ init flags _ =
     , messages = []
     , cards = []
     , users = []
+    , channels = flags.allChannels
     , menu = ""
     , typing = ""
     , prevTyping = ""
@@ -53,11 +54,12 @@ view : Model -> Html Msg
 view model =
     div [ id "container" ]
         [ aside []
-            [ lazy3 buttonMenuView model.menu "channel" [ text model.channel ]
+            [ lazy3 buttonMenuView model.menu "channel"
+                [ text model.channel.name ]
             , lazy3 buttonMenuView model.menu "user"
-                [ img [ src model.me.pictureURL ] [] , text model.me.name ]
+                [ img [ src model.me.pictureURL ] [], text model.me.name ]
             ]
-        , lazy2 channelConfigView model.menu model.channel
+        , lazy3 channelConfigView model.menu model.channels model.channel
         , lazy3 userConfigView model.menu model.users model.me
         , node "main" []
             [ section [ id "chat" ] [ chatView model ]
@@ -69,7 +71,7 @@ main =
     Navigation.programWithFlags
         (Navigation.makeParser (\l -> l))
         { init = init
-        , view = view
+        , view = lazy view
         , update = update
         , urlUpdate = \msg model -> model ! []
         , subscriptions = subscriptions

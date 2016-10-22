@@ -5,9 +5,9 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
 import Html.Lazy exposing (..)
-import Json.Decode as JD exposing ((:=))
+import Json.Decode exposing (string, object1, object2, object3, bool, at)
 
-import Types exposing (Model, CardMode(..), User, Editing(..))
+import Types exposing (Model, CardMode(..), User, Channel, Editing(..))
 import State exposing (Msg(..), Action(..))
 
 
@@ -17,26 +17,44 @@ buttonMenuView active menu contents =
         [ a [ onClick <| OpenMenu (if menu == active then "" else menu) ] contents
         ]
 
-channelConfigView : String -> String -> Html Msg
-channelConfigView active channelName =
+channelConfigView : String -> List String -> Channel -> Html Msg
+channelConfigView active allChannels channel =
     div [ id "channel", class <| if active == "channel" then "active" else "" ]
-        [ node "form" []
-            [ text channelName
+        [ div [] [ text channel.name ]
+        , div []
+            [ h3 [] [ text "Channels on this device" ]
+            , ul []
+                <| List.map (\c ->
+                    li []
+                        [ a [ class "button", onClick <| SelectChannel c ] [ text c ]
+                        ]
+                    )
+                <| allChannels
+            ]
+        , node "form"
+            [ class "config-form"
+            , onWithOptions "submit" (Options True True) <| object1
+                SetChannel
+                (at [ "target", "firstElementChild", "firstElementChild", "value" ] string)
+            ]
+            [ label []
+                [ text "Websocket: "
+                , input [ value channel.websocket ] []
+                ]
+            , button [] [ text "Set" ]
             ]
         ]
 
 userConfigView : String -> List User -> User -> Html Msg
 userConfigView active users user =
     div [ id "user", class <| if active == "user" then "active" else "" ]
-        [ text "Device: "
-        , code [] [ text user.machineId ]
-        , div [ class "profile" ]
+        [ div [ class "profile" ]
             [ img [ src user.pictureURL ] []
             , span [] [ text user.name ]
             ]
         , div []
             [ h3 [] [ text "Users on this device" ]
-            , ul [ id "user-list" ]
+            , ul []
                 <| List.map (\u ->
                     li []
                         [ img [ src u.pictureURL ] []
@@ -47,11 +65,11 @@ userConfigView active users user =
             ]
         , h3 [] [ text "Add new user" ]
         , node "form"
-            [ id "add-new-user"
-            , onWithOptions "submit" (Options True True) <| JD.object2
+            [ class "config-form"
+            , onWithOptions "submit" (Options True True) <| object2
                 SetUser
-                (JD.at [ "target", "firstElementChild", "firstElementChild", "value" ] JD.string)
-                (JD.at [ "target", "firstElementChild", "nextSibling", "firstElementChild", "value" ] JD.string)
+                (at [ "target", "firstElementChild", "firstElementChild", "value" ] string)
+                (at [ "target", "firstElementChild", "nextSibling", "firstElementChild", "value" ] string)
             ]
             [ label []
                 [ text "Name: "
@@ -61,6 +79,6 @@ userConfigView active users user =
                 [ text "Picture URL: "
                 , input [] []
                 ]
-            , button [] [ text "Add" ]
+            , button [] [ text "Set" ]
             ]
         ]
