@@ -12,7 +12,7 @@ if (!channelConfig) {
   channelConfig = {
     name: channelName,
     lan: false,
-    websocket: 'wss://black-bow.hyperdev.space/subnet'
+    websocket: 'wss://sky-sound.hyperdev.space/subnet'
   }
   localStorage.setItem('channel-' + channelName, JSON.stringify(channelConfig))
 }
@@ -60,6 +60,9 @@ webrtc.onchannelready = function (datachannel, connName) {
   app.ports.webrtc.send('CONNECTED')
 
   replicate()
+}
+webrtc.onwsdisconnected = function () {
+  app.ports.webrtc.send('CLOSED')
 }
 
 

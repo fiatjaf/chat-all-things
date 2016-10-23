@@ -27,7 +27,7 @@ channelConfigView active allChannels channel webrtcStatus =
             , if webrtcStatus == "CLOSED" then
                 a [ class "button", onClick ConnectWebRTC ] [ text "connect" ]
               else
-                text ""
+                a [ class "button", onClick <| WebRTCStateChange "CLOSED" ] [ text "cancel" ]
             ]
         , div []
             [ h3 [] [ text "Channels on this device" ]
