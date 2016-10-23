@@ -5,9 +5,13 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
 import Html.Lazy exposing (..)
+import Dict exposing (Dict)
+import Time exposing (..)
 import Json.Decode exposing (string, object1, object2, object3, bool, at)
 
-import Types exposing (Model, CardMode(..), User, Channel, Editing(..))
+import Types exposing (Model, CardMode(..),
+                       User, Channel,
+                       PeerStatus(..), Editing(..))
 import State exposing (Msg(..), Action(..))
 
 
@@ -17,17 +21,16 @@ buttonMenuView active menu contents =
         [ a [ onClick <| OpenMenu (if menu == active then "" else menu) ] contents
         ]
 
-channelConfigView : String -> List String -> Channel -> String -> Html Msg
-channelConfigView active allChannels channel webrtcStatus =
-    div [ id "channel", class <| if active == "channel" then "active" else "" ]
+menuView : String -> String -> Html Msg -> Html Msg
+menuView active menu = div [ id menu, class <| if menu == active then "active" else "" ] << List.repeat 1
+
+channelConfigView : List String -> Channel -> Dict String PeerStatus -> Html Msg
+channelConfigView allChannels channel webrtc =
+    div []
         [ div []
-            [ text "WebRTC: "
-            , code [] [ text webrtcStatus ]
-            , text " "
-            , if webrtcStatus == "CLOSED" then
-                a [ class "button", onClick ConnectWebRTC ] [ text "connect" ]
-              else
-                a [ class "button", onClick <| WebRTCStateChange "CLOSED" ] [ text "cancel" ]
+            [ a [ class "button", onClick ConnectWebSocket ] [ text "Try to establish connections" ]
+            , h3 [] [ text "Open connections" ]
+            , lazy openConnectionsView webrtc
             ]
         , div []
             [ h3 [] [ text "Channels on this device" ]
@@ -51,11 +54,36 @@ channelConfigView active allChannels channel webrtcStatus =
                 ]
             , button [] [ text "Set" ]
             ]
-        ]
+        ] 
 
-userConfigView : String -> List User -> User -> Html Msg
-userConfigView active users user =
-    div [ id "user", class <| if active == "user" then "active" else "" ]
+openConnectionsView : Dict String PeerStatus -> Html Msg
+openConnectionsView webrtc =
+    Keyed.ul [ class "open-connections" ]
+        <| Dict.toList
+        <| Dict.map
+            ( \id status ->
+                div []
+                    [ text <| id ++ ": "
+                    , code []
+                        [ text <| case status of
+                            Connecting -> "CONNECTING"
+                            Connected s -> if s.replicating then "REPLICATING" else "CONNECTED"
+                            Closed -> "CLOSED"
+                            Weird i -> "unknown state " ++ toString i
+                        ]
+                    , case status of
+                        Connected s -> small []
+                            [ text <| "data last sent " ++ (inSeconds s.lastSent |> toString) ++ " seconds ago. "
+                            , text <| "data last received " ++ (inSeconds s.lastReceived |> toString ) ++ " seconds ago."
+                            ]
+                        _ -> text ""
+                    ]
+            )
+        <| webrtc
+
+userConfigView : List User -> User -> Html Msg
+userConfigView users user =
+    div []
         [ div [ class "profile" ]
             [ img [ src user.pictureURL ] []
             , span [] [ text user.name ]

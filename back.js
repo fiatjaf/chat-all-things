@@ -1,8 +1,8 @@
-/* globals Elm, runElmProgram, PouchDB, cuid, localStorage, pouchdbEnsure, PouchReplicator, WebRTC */
+/* globals Elm, runElmProgram, PouchDB, cuid, localStorage, pouchdbEnsure, PouchReplicator, WebRTC, haiku */
 
 var machineId = localStorage.getItem('machineId')
 if (!machineId) {
-  machineId = cuid.slug()
+  machineId = haiku()
   localStorage.setItem('machineId', machineId)
 }
 
@@ -21,48 +21,85 @@ if (!channelConfig) {
 // setup database
 PouchDB.plugin(pouchdbEnsure)
 var db = new PouchDB('channel-' + channelName)
-var replicator = new PouchReplicator('replicator', PouchDB, db, {batch_size: 50})
-replicator.on('endpeerreplicate', function () {
-  console.log('received data from replication')
-  datachannels.forEach(dc => dc.send('received replicated data'))
-})
 setTimeout(() => db.viewCleanup(), 5000)
 
-function replicate () {
-  console.log('replicating pouchdb')
-  replicator.replicate()
-}
 
+// setup webrtc and replication
+var replicators = {}
+function setReplicator (otherMachineId, connName, datachannel) {
+  var replicator = replicators[otherMachineId] = replicators[otherMachineId] ||
+    new PouchReplicator('replicator', PouchDB, db, {batch_size: 50})
 
-// setup webrtc
-var webrtc = new WebRTC(channelConfig.websocket, {identifier: machineId})
-var datachannels = []
-webrtc.onchannelready = function (datachannel, connName) {
-  console.log('datachannel ready')
   replicator.addPeer(connName, datachannel)
-  datachannels.push(datachannel)
+  replicator.datachannels = replicator.datachannels || {}
+  replicator.datachannels[connName] = datachannel
+
+  replicator.on('endpeerreplicate', function () {
+    for (var i in replicator.datachannels) {
+      var dc = replicator.datachannels[i]
+      dc.send('<received>')
+    }
+    app.ports.replication.send([otherMachineId, '<received>'])
+  })
 
   datachannel.addEventListener('message', e => {
     console.log(connName + ' says: ' + e.data)
-    if (e.data === 'received replicated data') {
+    if (e.data === '<received>') {
+      app.ports.replication.send([otherMachineId, '<sent>'])
       db.compact()
     }
   })
+}
 
-  datachannel.addEventListener('closed', e => {
-    app.ports.webrtc.send('CLOSED')
+function cleanupReplicator (otherMachineId, connName) {
+  var replicator = replicators[otherMachineId]
+  if (!replicator) return
+  replicator.removePeer(connName)
+}
+
+function replicate () {
+  console.log('replicating pouchdb to', Object.keys(replicators))
+  for (var otherMachineId in replicators) {
+    console.log('> replicating pouchdb to', otherMachineId)
+
+    app.ports.replication.send([otherMachineId, '<replicating>'])
+
+    var replicator = replicators[otherMachineId]
+    replicator.replicate()
+  }
+}
+
+var webrtc = new WebRTC(channelConfig.websocket, {identifier: machineId})
+const CONNECTING = 0
+const CONNECTED = 1
+const CLOSED = 3
+webrtc.onconnecting = function (otherMachineId) {
+  app.ports.webrtc.send([otherMachineId, CONNECTING])
+}
+webrtc.onchannelready = function (datachannel, otherMachineId, connName) {
+  datachannel.addEventListener('close', e => {
+    app.ports.webrtc.send([otherMachineId, CLOSED])
+    cleanupReplicator(otherMachineId, connName)
   })
 
   datachannel.addEventListener('error', e => {
-    app.ports.webrtc.send('CLOSED')
+    app.ports.webrtc.send([otherMachineId, CLOSED])
+    cleanupReplicator(otherMachineId, connName)
   })
 
-  app.ports.webrtc.send('CONNECTED')
+  app.ports.webrtc.send([otherMachineId, CONNECTED])
+  setReplicator(otherMachineId, connName, datachannel)
 
   replicate()
 }
+webrtc.onwsconnected = function () {
+  app.ports.websocket.send(true)
+}
 webrtc.onwsdisconnected = function () {
-  app.ports.webrtc.send('CLOSED')
+  app.ports.websocket.send(false)
+
+  // try again in 2 minutes
+  setTimeout(function () { webrtc.openWebSocket() }, 120000)
 }
 
 
@@ -98,8 +135,8 @@ try {
 
 
 // elm app ports
-app.ports.connect.subscribe(function () {
-  webrtc.connect()
+app.ports.wsConnect.subscribe(function () {
+  webrtc.openWebSocket()
 })
 app.ports.updateCardContents.subscribe(function (data) {
   var id = data[0]

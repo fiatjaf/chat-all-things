@@ -5,6 +5,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
 import Html.Lazy exposing (..)
+import Dict
 import Platform.Cmd as Cmd
 import Navigation exposing (Location)
 import Debounce
@@ -12,7 +13,8 @@ import ElmTextSearch as Search
 
 import State exposing (update, subscriptions,
                        Msg(..), Action(..))
-import Types exposing (Card, Message, Content(..), User, Channel,
+import Types exposing (Card, Message, User, Channel,
+                       Content(..), PeerStatus(..),
                        cardDecoder, messageDecoder,
                        encodeCard, encodeMessage,
                        Model, CardMode(..))
@@ -44,7 +46,8 @@ init flags _ =
                 [ ( .comments >> List.map .text, 1.0 )
                 ]
             }
-    , webrtc = "CLOSED"
+    , websocket = False
+    , webrtc = Dict.empty
     , debouncer = Debounce.init
     } ! []
 
@@ -53,20 +56,42 @@ init flags _ =
 
 view : Model -> Html Msg
 view model =
-    div [ id "container" ]
-        [ aside []
-            [ lazy3 buttonMenuView model.menu "channel"
-                [ text model.channel.name ]
-            , lazy3 buttonMenuView model.menu "user"
-                [ img [ src model.me.pictureURL ] [], text model.me.name ]
+    let
+        npeers = model.webrtc
+            |> Dict.size
+            |> toString
+        nconnected = model.webrtc
+            |> Dict.filter
+                ( \_ ps -> case ps of
+                    Connected _ -> True
+                    _ -> False
+                )
+            |> Dict.size
+            |> toString
+    in
+        div [ id "container" ]
+            [ aside []
+                [ lazy3 buttonMenuView model.menu "channel"
+                    [ span [] [ text model.channel.name ]
+                    , small []
+                        [ text <| if model.websocket then "looking for new connections" else "not accepting new connections"
+                        , if model.websocket then text ""
+                          else span [ onClick ConnectWebSocket ] [ text "" ]
+                        ]
+                    , small [] [ text <| npeers ++ " peers, " ++ nconnected ++ " connected" ]
+                    ]
+                , lazy3 buttonMenuView model.menu "user"
+                    [ img [ src model.me.pictureURL ] [], text model.me.name ]
+                ]
+            , lazy3 menuView model.menu "channel"
+                <| lazy3 channelConfigView model.channels model.channel model.webrtc
+            , lazy3 menuView model.menu "user"
+                <| lazy2 userConfigView model.users model.me
+            , node "main" []
+                [ section [ id "chat" ] [ chatView model ]
+                , section [ id "cards" ] [ cardsView model ]
+                ]
             ]
-        , channelConfigView model.menu model.channels model.channel model.webrtc
-        , lazy3 userConfigView model.menu model.users model.me
-        , node "main" []
-            [ section [ id "chat" ] [ chatView model ]
-            , section [ id "cards" ] [ cardsView model ]
-            ]
-        ]
 
 main =
     Navigation.programWithFlags

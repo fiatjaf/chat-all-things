@@ -3,6 +3,7 @@ port module State exposing (..)
 import String
 import Array exposing (Array)
 import Dict exposing (Dict)
+import Time exposing (Time)
 import Json.Decode as JD exposing ((:=), decodeValue)
 import Json.Encode as JE exposing (Value)
 import Platform.Cmd as Cmd
@@ -11,7 +12,8 @@ import Debounce
 import ElmTextSearch as Search
 import Debug exposing (log)
 
-import Types exposing (Card, Message, User, Channel, Content(..),
+import Types exposing (Card, Message, User, Channel,
+                       Content(..), PeerStatus(..),
                        cardDecoder, messageDecoder, userDecoder,
                        encodeCard, encodeContent, encodeMessage, encodeUser,
                        Model, CardMode(..), Editing(..))
@@ -32,7 +34,8 @@ type Msg
     | GotCard Card | FocusCard Card
     | GotUser User | SelectUser User | SetUser String String
     | SelectChannel String | SetChannel String
-    | ConnectWebRTC | WebRTCStateChange String
+    | ConnectWebSocket | WebSocketState Bool | WebRTCState (String, Int) | ReplicationState (String, String)
+    | Tick Time
     | NoOp String
 
 type Action = Add | Edit Int Content | Delete Int
@@ -42,7 +45,7 @@ port setUserPicture : (String, String) -> Cmd msg
 port setChannel : Channel -> Cmd msg
 port loadCard : String -> Cmd msg
 port updateCardContents : (String, Int, Value) -> Cmd msg
-port connect : Bool -> Cmd msg
+port wsConnect : Bool -> Cmd msg
 
 port moveToChannel : String -> Cmd msg
 port userSelected : String -> Cmd msg
@@ -236,8 +239,61 @@ update msg model =
             in
                 { model | channel = channel } ! [ setChannel channel ]
         SelectChannel channelName -> model ! [ moveToChannel channelName ]
-        ConnectWebRTC -> { model | webrtc = "CONNECTING" } ! [ connect True ]
-        WebRTCStateChange s -> { model | webrtc = s } ! []
+        ConnectWebSocket -> model ! [ wsConnect True ]
+        WebSocketState wsup ->
+            { model
+                | websocket = wsup
+                , webrtc =
+                    if wsup then model.webrtc
+                    else Dict.map
+                        (\_ ps ->
+                            case ps of
+                                Connected _ -> ps 
+                                _ -> Closed
+                        )
+                        model.webrtc
+            } ! []
+        WebRTCState (otherMachineId, connState) ->
+            { model
+                | webrtc = Dict.insert otherMachineId
+                    ( case connState of
+                        0 -> Connecting
+                        1 -> Connected { replicating = False, lastSent = 0, lastReceived = 0 }
+                        3 -> Closed
+                        _ -> Weird connState
+                    )
+                    model.webrtc
+            } ! []
+        ReplicationState (otherMachineId, action) ->
+            { model | webrtc = 
+                Dict.update otherMachineId
+                    ( \v -> case v of
+                        Just (Connected data) -> Just <| Connected
+                            { data
+                                | replicating =
+                                    case action of
+                                        "<replicating>" -> True
+                                        "<sent>" -> False
+                                        _ -> data.replicating
+                                , lastSent = if action == "<sent>" then 0 else data.lastSent
+                                , lastReceived = if action == "<received>" then 0 else data.lastReceived
+                            }
+                        _ -> Nothing
+                    )
+                    model.webrtc
+            } ! []
+        Tick _ ->
+            { model | webrtc = Dict.map
+                (\_ ps -> case ps of
+                    Connected data -> Connected
+                        { data
+                            | lastSent = data.lastSent + tickInterval
+                            , lastReceived = data.lastReceived + tickInterval
+                        }
+                    _ -> ps
+                )
+                model.webrtc
+            } ! []
         NoOp _ -> (model, Cmd.none)
 
 
@@ -248,7 +304,9 @@ port pouchCards : (Value -> msg) -> Sub msg
 port pouchUsers : (Value -> msg) -> Sub msg
 port cardLoaded : (Value -> msg) -> Sub msg
 port currentUser : (Value -> msg) -> Sub msg
-port webrtc : (String -> msg) -> Sub msg
+port websocket : (Bool  -> msg) -> Sub msg
+port webrtc : ((String, Int) -> msg) -> Sub msg
+port replication : ((String, String) -> msg) -> Sub msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -265,8 +323,14 @@ subscriptions model =
             , pouchUsers <| decodeOrFail userDecoder GotUser
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
             , currentUser <| decodeOrFail userDecoder SelectUser
-            , webrtc WebRTCStateChange
+            , websocket WebSocketState
+            , webrtc WebRTCState
+            , replication ReplicationState
+            , Time.every tickInterval Tick
             ]
+
+
+tickInterval = Time.second * 10
 
 debCfg : Debounce.Config Model Msg
 debCfg = Debounce.config .debouncer (\m s -> { m | debouncer = s }) Deb 400

@@ -32,7 +32,7 @@ body
 
       a
         display block
-        padding 10px
+        padding 6px 10px 10px 10px
         height 100%
         width 100%
         &:hover
@@ -47,7 +47,18 @@ body
         height 104%
         margin 0 4px -4px 0
 
-    .channel {}
+    .channel
+      span
+        position absolute
+        width 150px
+        height 26px
+        overflow hidden
+        text-overflow ellipsis
+      small
+        margin-left 2px
+        font-size 12px
+        float right
+        clear both
     .user
       text-align right
 
@@ -57,15 +68,19 @@ body
   padding 18px
   font-size 22px
 
-  label, button
-    display block
-
   &.active
     display block
     width 50%
     height calc(100% - 40px)
     background $back2
 
+#channel
+  .open-connections
+    small
+      display block
+      font-size 12px
+
+#user
   ul
     padding 0
     list-style none
@@ -91,6 +106,19 @@ body
     height 40px
   span
     display block
+
+.config-form
+  input
+    display block
+    width 96%
+    margin 10px auto
+    padding 4px
+    font-size 18px
+  button
+    display block
+    font-size 24px
+    padding 5px 15px
+    margin 10px auto
 
 main
   height calc(100% - 40px)

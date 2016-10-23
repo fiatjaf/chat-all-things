@@ -2,6 +2,8 @@ module Types exposing (..)
 
 import Json.Decode as JD exposing ((:=))
 import Json.Encode as JE exposing (Value)
+import Dict exposing (Dict)
+import Time exposing (Time)
 import ElmTextSearch as Search
 import Array exposing (Array)
 import String
@@ -109,6 +111,17 @@ type alias Channel =
     }
 
 
+type PeerStatus
+    = Connecting
+    | Closed
+    | Connected
+        { replicating : Bool
+        , lastSent : Time
+        , lastReceived : Time
+        }
+    | Weird Int
+
+
 -- MODEL
 
 type alias Model =
@@ -123,7 +136,8 @@ type alias Model =
     , cardSearchIndex : Search.Index Card
     , cardMode : CardMode
     , users : List User
-    , webrtc : String
+    , websocket : Bool
+    , webrtc : Dict String PeerStatus
     , debouncer : Debounce.State
     }
 
