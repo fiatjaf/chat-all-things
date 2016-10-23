@@ -25,7 +25,7 @@ init : { channel : Channel, machineId : String, allChannels : List String }
        -> Location -> (Model, Cmd Msg)
 init flags _ =
     { channel = flags.channel
-    , me = User flags.machineId flags.machineId ""
+    , me = User flags.machineId flags.machineId ("https://api.adorable.io/avatars/140/" ++ flags.machineId)
     , messages = []
     , cards = []
     , users = []
@@ -44,6 +44,7 @@ init flags _ =
                 [ ( .comments >> List.map .text, 1.0 )
                 ]
             }
+    , webrtc = "CLOSED"
     , debouncer = Debounce.init
     } ! []
 
@@ -59,7 +60,7 @@ view model =
             , lazy3 buttonMenuView model.menu "user"
                 [ img [ src model.me.pictureURL ] [], text model.me.name ]
             ]
-        , lazy3 channelConfigView model.menu model.channels model.channel
+        , channelConfigView model.menu model.channels model.channel model.webrtc
         , lazy3 userConfigView model.menu model.users model.me
         , node "main" []
             [ section [ id "chat" ] [ chatView model ]

@@ -123,6 +123,7 @@ type alias Model =
     , cardSearchIndex : Search.Index Card
     , cardMode : CardMode
     , users : List User
+    , webrtc : String
     , debouncer : Debounce.State
     }
 

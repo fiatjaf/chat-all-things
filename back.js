@@ -1,4 +1,4 @@
-/* globals Elm, runElmProgram, PouchDB, cuid, location, localStorage, pouchdbEnsure */
+/* globals Elm, runElmProgram, PouchDB, cuid, localStorage, pouchdbEnsure, PouchReplicator, WebRTC */
 
 var machineId = localStorage.getItem('machineId')
 if (!machineId) {
@@ -6,18 +6,61 @@ if (!machineId) {
   localStorage.setItem('machineId', machineId)
 }
 
-var channelName = location.pathname.split('/').slice(-1)[0]
-var channelConfig = JSON.parse(localStorage.getItem('channel-' + channelName)) || {
-  name: channelName,
-  lan: false,
-  websocket: 'https://black-bow.hyperdev.space/' + channelName
+var channelName = window.location.pathname.split('/').slice(-1)[0]
+var channelConfig = JSON.parse(localStorage.getItem('channel-' + channelName))
+if (!channelConfig) {
+  channelConfig = {
+    name: channelName,
+    lan: false,
+    websocket: 'wss://black-bow.hyperdev.space/subnet'
+  }
+  localStorage.setItem('channel-' + channelName, JSON.stringify(channelConfig))
 }
 
 
 // setup database
 PouchDB.plugin(pouchdbEnsure)
 var db = new PouchDB('channel-' + channelName)
+var replicator = new PouchReplicator('replicator', PouchDB, db, {batch_size: 50})
+replicator.on('endpeerreplicate', function () {
+  console.log('received data from replication')
+  datachannels.forEach(dc => dc.send('received replicated data'))
+})
 setTimeout(() => db.viewCleanup(), 5000)
+
+function replicate () {
+  console.log('replicating pouchdb')
+  replicator.replicate()
+}
+
+
+// setup webrtc
+var webrtc = new WebRTC(channelConfig.websocket, {identifier: machineId})
+var datachannels = []
+webrtc.onchannelready = function (datachannel, connName) {
+  console.log('datachannel ready')
+  replicator.addPeer(connName, datachannel)
+  datachannels.push(datachannel)
+
+  datachannel.addEventListener('message', e => {
+    console.log(connName + ' says: ' + e.data)
+    if (e.data === 'received replicated data') {
+      db.compact()
+    }
+  })
+
+  datachannel.addEventListener('closed', e => {
+    app.ports.webrtc.send('CLOSED')
+  })
+
+  datachannel.addEventListener('error', e => {
+    app.ports.webrtc.send('CLOSED')
+  })
+
+  app.ports.webrtc.send('CONNECTED')
+
+  replicate()
+}
 
 
 // one doc in the database is sufficient to mark this channel as existing
@@ -52,6 +95,9 @@ try {
 
 
 // elm app ports
+app.ports.connect.subscribe(function () {
+  webrtc.connect()
+})
 app.ports.updateCardContents.subscribe(function (data) {
   var id = data[0]
   var index = data[1]
@@ -65,21 +111,25 @@ app.ports.updateCardContents.subscribe(function (data) {
         if (card.name !== value) {
           card.name = value
           db.put(card)
+            .then(replicate)
         }
       } else if (value === null) {
         // deleting a content
         if (card.contents[index]) {
           card.contents.splice(index, 1)
           db.put(card)
+            .then(replicate)
         }
       } else if (typeof card.contents[index] === 'undefined') {
         // adding content (either text or conversation)
         card.contents.push(value)
         db.put(card)
+          .then(replicate)
       } else if (card.contents[index] !== value) {
         // updating text content
         card.contents[index] = value
         db.put(card)
+          .then(replicate)
       }
     }
   })
@@ -96,6 +146,7 @@ app.ports.pouchCreate.subscribe(function (doc) {
 
   delete doc.type
   db.put(doc)
+    .then(replicate)
   .then(() => {
     if (doc._id.split('-')[0] === 'card') app.ports.cardLoaded.send(doc)
   })
@@ -128,15 +179,17 @@ app.ports.setUserPicture.subscribe(function (data) {
   .then(doc => {
     doc.pictureURL = pictureURL
     return db.put(doc)
+             .then(replicate)
   })
   .catch(e => console.log('failed to save user with picture', e))
 })
 app.ports.setChannel.subscribe(function (channel) {
-  localStorage.setItem('channel', JSON.stringify(channel))
+  localStorage.setItem('channel-' + channelName, JSON.stringify(channel))
+  channelConfig = channel
 })
 
 app.ports.moveToChannel.subscribe(function (channelName) {
-  location.href = '/channel/' + channelName
+  window.location.href = '/channel/' + channelName
 })
 app.ports.userSelected.subscribe(function (name) {
   localStorage.setItem('lastuser-' + channelName, name)

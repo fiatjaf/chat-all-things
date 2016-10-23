@@ -17,10 +17,18 @@ buttonMenuView active menu contents =
         [ a [ onClick <| OpenMenu (if menu == active then "" else menu) ] contents
         ]
 
-channelConfigView : String -> List String -> Channel -> Html Msg
-channelConfigView active allChannels channel =
+channelConfigView : String -> List String -> Channel -> String -> Html Msg
+channelConfigView active allChannels channel webrtcStatus =
     div [ id "channel", class <| if active == "channel" then "active" else "" ]
-        [ div [] [ text channel.name ]
+        [ div []
+            [ text "WebRTC: "
+            , code [] [ text webrtcStatus ]
+            , text " "
+            , if webrtcStatus == "CLOSED" then
+                a [ class "button", onClick ConnectWebRTC ] [ text "connect" ]
+              else
+                text ""
+            ]
         , div []
             [ h3 [] [ text "Channels on this device" ]
             , ul []

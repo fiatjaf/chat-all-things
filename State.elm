@@ -32,6 +32,7 @@ type Msg
     | GotCard Card | FocusCard Card
     | GotUser User | SelectUser User | SetUser String String
     | SelectChannel String | SetChannel String
+    | ConnectWebRTC | WebRTCStateChange String
     | NoOp String
 
 type Action = Add | Edit Int Content | Delete Int
@@ -41,6 +42,7 @@ port setUserPicture : (String, String) -> Cmd msg
 port setChannel : Channel -> Cmd msg
 port loadCard : String -> Cmd msg
 port updateCardContents : (String, Int, Value) -> Cmd msg
+port connect : Bool -> Cmd msg
 
 port moveToChannel : String -> Cmd msg
 port userSelected : String -> Cmd msg
@@ -234,6 +236,8 @@ update msg model =
             in
                 { model | channel = channel } ! [ setChannel channel ]
         SelectChannel channelName -> model ! [ moveToChannel channelName ]
+        ConnectWebRTC -> { model | webrtc = "CONNECTING" } ! [ connect True ]
+        WebRTCStateChange s -> { model | webrtc = s } ! []
         NoOp _ -> (model, Cmd.none)
 
 
@@ -244,6 +248,7 @@ port pouchCards : (Value -> msg) -> Sub msg
 port pouchUsers : (Value -> msg) -> Sub msg
 port cardLoaded : (Value -> msg) -> Sub msg
 port currentUser : (Value -> msg) -> Sub msg
+port webrtc : (String -> msg) -> Sub msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -260,6 +265,7 @@ subscriptions model =
             , pouchUsers <| decodeOrFail userDecoder GotUser
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
             , currentUser <| decodeOrFail userDecoder SelectUser
+            , webrtc WebRTCStateChange
             ]
 
 debCfg : Debounce.Config Model Msg
