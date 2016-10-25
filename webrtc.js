@@ -1,4 +1,4 @@
-/* globals app, channelConfig, machineId, cleanupReplicator, setReplicator, replicate
+/* globals app, appready, channelConfig, machineId, cleanupReplicator, setReplicator, replicate
     WebRTC */
 
 
@@ -38,8 +38,8 @@ webrtc.onwsdisconnected = function () {
 
 
 // start connecting when requested from UI
-setTimeout(() => {
+appready(() => {
   app.ports.wsConnect.subscribe(function (addr) {
     webrtc.openWebSocket()
   })
-}, 1)
+})

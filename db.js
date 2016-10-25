@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-/* globals app, channelConfig, allChannels
+/* globals app, appready, channelConfig, allChannels
     PouchDB, localStorage, haiku, pouchdbEnsure, PouchReplicator */
 
 
@@ -89,7 +89,7 @@ db.allDocs({startkey: 'user-', endkey: 'user-{', include_docs: true})
 
 
 // listen for db changes and react accordingly
-setTimeout(() => {
+appready(() => {
   db.changes({
     live: true,
     include_docs: true,
@@ -113,4 +113,4 @@ setTimeout(() => {
   }).on('error', function (err) {
     console.log('pouchdb changes error:', err)
   })
-}, 1)
+})

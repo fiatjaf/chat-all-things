@@ -35,7 +35,7 @@ self.addEventListener('activate', function (e) {
 })
 
 self.addEventListener('fetch', function (e) {
-  var parts = e.request.url.split('/')
+  var parts = e.request.url.split('?')[0].split('/')
   /*if (e.request.url.slice(-4) === '.png') {
     e.respondWith(
       Promise.resolve(new Response(

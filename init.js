@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-/* globals app, localStorage, haiku */
+/* globals app, appready, localStorage, haiku */
 
 
 // machine id -- should unique and the same forever
@@ -27,7 +27,7 @@ var allChannels = JSON.parse(localStorage.getItem('allChannels') || '{}')
 
 
 // listen an react to UI actions concerning channels
-setTimeout(() => {
+appready(() => {
   app.ports.setChannel.subscribe(function (channel) {
     localStorage.setItem('channel-' + channelConfig.name, JSON.stringify(channel))
     channelConfig = channel
@@ -35,4 +35,4 @@ setTimeout(() => {
   app.ports.moveToChannel.subscribe(function (toChannel) {
     window.location.href = '/channel/' + toChannel
   })
-}, 1)
+})

@@ -1,4 +1,4 @@
-/* globals db, machineId, channelConfig, replicate, allChannels
+/* globals okready, db, machineId, channelConfig, replicate, allChannels
     Elm, runElmProgram, cuid, localStorage, localWebSocket */
 
 
@@ -10,6 +10,7 @@ try {
     channel: channelConfig,
     allChannels: Object.keys(allChannels)
   })
+  okready()
 } catch (e) {
   var stylesheets = document.querySelectorAll('link')
   for (var i = 0; i < stylesheets.length; i++) {

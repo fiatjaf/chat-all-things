@@ -14,6 +14,11 @@
 <script src="/vendor/localdiscovery.js"></script>
 <script src="/_compile/Main.elm"></script>
 <script src="/bundle.js"></script>
+<script>
+var _q = [], _ready = false
+function appready (cb) { _ready ? cb() : _q.push(cb) }
+function okready () { _ready = true; _q.forEach(cb => cb()) }
+</script>
 <script src="/init.js"></script>
 <script src="/db.js"></script>
 <script src="/webrtc.js"></script>
