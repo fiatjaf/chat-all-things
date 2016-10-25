@@ -76,7 +76,7 @@ view model =
                     , small []
                         [ text
                             <| if model.websocket then
-                                "looking for new connections"
+                                "looking for connections at " ++ model.channel.websocket
                                else
                                 "not accepting new connections"
                         ]

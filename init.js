@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
-/* globals app, appready, localStorage, haiku */
+/* globals app, appready, localStorage, haiku,
+    location */
 
 
 // machine id -- should unique and the same forever
@@ -10,15 +11,21 @@ if (!machineId) {
 }
 
 
-// channel preferences, just fetch them
+// channel preferences, just fetch them from localStorage
 var channelName = window.location.pathname.split('/').slice(-1)[0]
 var channelConfig = JSON.parse(localStorage.getItem('channel-' + channelName))
 if (!channelConfig) {
+  const defaultWebSocketURL = 'wss://sky-sound.hyperdev.space/subnet/' + channelName
+
+  // maybe this channel was reached through a link with a querystring hint of a websocket url/channel
+  var hintWebSocketURL = location.search.slice(1)
+    .split('&')
+    .find(kv => kv.split('=')[0] === 'ws')
+
   channelConfig = {
     name: channelName,
-    websocket: 'wss://sky-sound.hyperdev.space/subnet/' + channelName
+    websocket: hintWebSocketURL ? hintWebSocketURL.split('=')[1].trim() : defaultWebSocketURL
   }
-  localStorage.setItem('channel-' + channelName, JSON.stringify(channelConfig))
 }
 
 
