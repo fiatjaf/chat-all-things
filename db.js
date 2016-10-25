@@ -1,58 +1,68 @@
 /* eslint-disable no-unused-vars */
-/* globals app, appready, channelConfig, allChannels
+/* globals app, appready,
     PouchDB, localStorage, haiku, pouchdbEnsure, PouchReplicator */
+
+const channelConfig = require('./init').channelConfig
+const allChannels = require('./init').allChannels
 
 
 // setup database
 PouchDB.plugin(pouchdbEnsure)
 var db = new PouchDB('channel-' + channelConfig.name)
 setTimeout(() => db.viewCleanup(), 5000)
+module.exports.db = db
 
 
-// setup webrtc replicators
-var replicators = {}
-function setReplicator (otherMachineId, connName, datachannel) {
-  var replicator = replicators[otherMachineId] = replicators[otherMachineId] ||
-    new PouchReplicator('replicator', PouchDB, db, {batch_size: 50})
+// setup webrtc channel management and pouchdb channelManager
+function ChannelManager () {
+  this.connections = {}
+  this.replicators = {}
 
-  replicator.addPeer(connName, datachannel)
-  replicator.datachannels = replicator.datachannels || {}
-  replicator.datachannels[connName] = datachannel
+  this.set = function (otherMachineId, connName, datachannel) {
+    var replicator = this.replicators[otherMachineId] = this.replicators[otherMachineId] ||
+      new PouchReplicator('replicator', PouchDB, db, {batch_size: 50})
 
-  replicator.on('endpeerreplicate', function () {
-    for (var i in replicator.datachannels) {
-      var dc = replicator.datachannels[i]
-      dc.send('<received>')
+    replicator.addPeer(connName, datachannel)
+
+    var connections = this.connections[otherMachineId] = this.connections[otherMachineId] || {}
+    connections[connName] = datachannel
+
+    replicator.on('endpeerreplicate', function () {
+      for (var i in replicator.datachannels) {
+        var dc = replicator.datachannels[i]
+        dc.send('<received>')
+      }
+      app.ports.replication.send([otherMachineId, '<received>'])
+    })
+
+    datachannel.addEventListener('message', e => {
+      console.log(connName + ' says: ' + e.data)
+      if (e.data === '<received>') {
+        app.ports.replication.send([otherMachineId, '<sent>'])
+        db.compact()
+      }
+    })
+  }
+
+  this.cleanup = function (otherMachineId, connName) {
+    var replicator = this.replicators[otherMachineId]
+    if (!replicator) return
+    replicator.removePeer(connName)
+  }
+
+  this.replicate = function () {
+    console.log('replicating pouchdb to', Object.keys(this.replicators))
+    for (var otherMachineId in this.replicators) {
+      console.log('> replicating pouchdb to', otherMachineId)
+
+      app.ports.replication.send([otherMachineId, '<replicating>'])
+
+      var replicator = this.replicators[otherMachineId]
+      replicator.replicate()
     }
-    app.ports.replication.send([otherMachineId, '<received>'])
-  })
-
-  datachannel.addEventListener('message', e => {
-    console.log(connName + ' says: ' + e.data)
-    if (e.data === '<received>') {
-      app.ports.replication.send([otherMachineId, '<sent>'])
-      db.compact()
-    }
-  })
-}
-
-function cleanupReplicator (otherMachineId, connName) {
-  var replicator = replicators[otherMachineId]
-  if (!replicator) return
-  replicator.removePeer(connName)
-}
-
-function replicate () {
-  console.log('replicating pouchdb to', Object.keys(replicators))
-  for (var otherMachineId in replicators) {
-    console.log('> replicating pouchdb to', otherMachineId)
-
-    app.ports.replication.send([otherMachineId, '<replicating>'])
-
-    var replicator = replicators[otherMachineId]
-    replicator.replicate()
   }
 }
+module.exports.channelManager = new ChannelManager()
 
 
 // mark this channel as existing.

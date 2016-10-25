@@ -1,6 +1,5 @@
 /* eslint-disable no-unused-vars */
-/* globals app, appready, localStorage, haiku,
-    location */
+/* globals app, appready, localStorage, haiku, location */
 
 
 // machine id -- should unique and the same forever
@@ -9,6 +8,7 @@ if (!machineId) {
   machineId = haiku()
   localStorage.setItem('machineId', machineId)
 }
+module.exports.machineId = machineId
 
 
 // channel preferences, just fetch them from localStorage
@@ -27,10 +27,12 @@ if (!channelConfig) {
     websocket: hintWebSocketURL ? hintWebSocketURL.split('=')[1].trim() : defaultWebSocketURL
   }
 }
+module.exports.channelConfig = channelConfig
 
 
 // a list of active channels that we keep manually (see db.js)
 var allChannels = JSON.parse(localStorage.getItem('allChannels') || '{}')
+module.exports.allChannels = allChannels
 
 
 // listen an react to UI actions concerning channels

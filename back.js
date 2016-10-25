@@ -1,22 +1,35 @@
-/* globals okready, db, machineId, channelConfig, replicate, allChannels
-    Elm, runElmProgram, cuid, localStorage, localWebSocket */
+/* globals app, okready
+    Elm, runElmProgram, cuid, localStorage */
+
+const machineId = require('./init').machineId
+const channelConfig = require('./init').channelConfig
+const allChannels = require('./init').allChannels
+const db = require('./db').db
+const channelManager = require('./db').channelManager
 
 
 // run elm app
-var app
+var ok
 try {
-  app = Elm.App.fullscreen({
+  window.app = Elm.App.fullscreen({
     machineId: machineId,
     channel: channelConfig,
     allChannels: Object.keys(allChannels)
   })
-  okready()
+  ok = true
 } catch (e) {
   var stylesheets = document.querySelectorAll('link')
   for (var i = 0; i < stylesheets.length; i++) {
     stylesheets[i].parentNode.removeChild(stylesheets[i])
   }
   runElmProgram()
+  ok = false
+}
+if (ok) okready()
+
+
+function replicate () {
+  channelManager.replicate()
 }
 
 
@@ -129,12 +142,6 @@ app.ports.deselectText.subscribe(function (timeout) {
     }
   }, timeout)
 })
-
-
-// try to fetch address of a local websocket server that may be running
-localWebSocket()
-.then(address => app.ports.websocketFound.send(address))
-.catch(() => {})
 
 
 // register service worker

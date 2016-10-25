@@ -1,9 +1,14 @@
-/* globals app, appready, channelConfig, machineId, cleanupReplicator, setReplicator, replicate
+/* globals app, appready
     WebRTC */
+
+const machineId = require('./init').machineId
+const channelConfig = require('./init').channelConfig
+const channelManager = require('./db').channelManager
 
 
 // setup webrtc
 var webrtc = new WebRTC(channelConfig.websocket, {identifier: machineId})
+module.exports.webrtc = webrtc
 const CONNECTING = 0
 const CONNECTED = 1
 const CLOSED = 3
@@ -13,18 +18,18 @@ webrtc.onconnecting = function (otherMachineId) {
 webrtc.onchannelready = function (datachannel, otherMachineId, connName) {
   datachannel.addEventListener('close', e => {
     app.ports.webrtc.send([otherMachineId, CLOSED])
-    cleanupReplicator(otherMachineId, connName)
+    channelManager.cleanup(otherMachineId, connName)
   })
 
   datachannel.addEventListener('error', e => {
     app.ports.webrtc.send([otherMachineId, CLOSED])
-    cleanupReplicator(otherMachineId, connName)
+    channelManager.cleanup(otherMachineId, connName)
   })
 
   app.ports.webrtc.send([otherMachineId, CONNECTED])
-  setReplicator(otherMachineId, connName, datachannel)
+  channelManager.set(otherMachineId, connName, datachannel)
 
-  replicate()
+  channelManager.replicate()
 }
 webrtc.onwsconnected = function () {
   app.ports.websocket.send(true)
