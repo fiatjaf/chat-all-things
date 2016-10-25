@@ -13,7 +13,8 @@ self.addEventListener('install', function (e) {
         'https://cdnjs.cloudflare.com/ajax/libs/pouchdb/6.0.6/pouchdb.min.js',
         'https://wzrd.in/standalone/pouchdb-ensure',
         'https://cdnjs.cloudflare.com/ajax/libs/cuid/1.3.8/browser-cuid.min.js',
-        'https://cdn.rawgit.com/fiatjaf/pouch-replicate-webrtc/26ee76a7b027f524d97d39c1a28f8ae037e80f15/dist/pouch-replicate-webrtc.js'
+        'https://cdn.rawgit.com/fiatjaf/pouch-replicate-webrtc/26ee76a7b027f524d97d39c1a28f8ae037e80f15/dist/pouch-replicate-webrtc.js',
+        '/vendor/haiku.js'
       ]))
     .then(() => self.skipWaiting())
   )

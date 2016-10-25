@@ -95,7 +95,7 @@ fullCardView card editing =
             <| Array.toList
             <| Array.indexedMap (cardContentView card) card.contents
         , a
-            [ class "add-content ion-more"
+            [ class "add-content ion-plus-round"
             , title "add text to this card"
             , onClick <| UpdateCardContents Add
             ] [ text "" ]

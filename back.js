@@ -1,4 +1,4 @@
-/* globals Elm, runElmProgram, PouchDB, cuid, localStorage, pouchdbEnsure, PouchReplicator, WebRTC, haiku */
+/* globals Elm, runElmProgram, PouchDB, cuid, localStorage, pouchdbEnsure, PouchReplicator, WebRTC, haiku, localWebSocket */
 
 var machineId = localStorage.getItem('machineId')
 if (!machineId) {
@@ -11,8 +11,7 @@ var channelConfig = JSON.parse(localStorage.getItem('channel-' + channelName))
 if (!channelConfig) {
   channelConfig = {
     name: channelName,
-    lan: false,
-    websocket: 'wss://sky-sound.hyperdev.space/subnet'
+    websocket: 'wss://sky-sound.hyperdev.space/subnet/' + channelName
   }
   localStorage.setItem('channel-' + channelName, JSON.stringify(channelConfig))
 }
@@ -115,6 +114,12 @@ db.allDocs({limit: 1, startkey: 'A'})
     )
   }
 })
+
+
+// try to fetch address of a local websocket server that may be running
+localWebSocket()
+.then(address => {})
+.catch(() => {})
 
 
 // run elm app

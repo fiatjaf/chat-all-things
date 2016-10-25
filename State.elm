@@ -233,9 +233,9 @@ update msg model =
         SelectUser user -> { model | me = user } ! [ userSelected user.name ]
         SetUser name pictureURL ->
             model ! [ setUserPicture (name, pictureURL) ]
-        SetChannel websocket ->
+        SetChannel wsurl ->
             let
-                channel = Channel model.channel.name websocket
+                channel = Channel model.channel.name wsurl
             in
                 { model | channel = channel } ! [ setChannel channel ]
         SelectChannel channelName -> model ! [ moveToChannel channelName ]

@@ -74,9 +74,11 @@ view model =
                 [ lazy3 buttonMenuView model.menu "channel"
                     [ span [] [ text model.channel.name ]
                     , small []
-                        [ text <| if model.websocket then "looking for new connections" else "not accepting new connections"
-                        , if model.websocket then text ""
-                          else span [ onClick ConnectWebSocket ] [ text "" ]
+                        [ text
+                            <| if model.websocket then
+                                "looking for new connections"
+                               else
+                                "not accepting new connections"
                         ]
                     , small [] [ text <| npeers ++ " peers, " ++ nconnected ++ " connected" ]
                     ]
