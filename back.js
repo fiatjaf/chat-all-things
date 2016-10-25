@@ -1,125 +1,5 @@
-/* globals Elm, runElmProgram, PouchDB, cuid, localStorage, pouchdbEnsure, PouchReplicator, WebRTC, haiku, localWebSocket */
-
-var machineId = localStorage.getItem('machineId')
-if (!machineId) {
-  machineId = haiku()
-  localStorage.setItem('machineId', machineId)
-}
-
-var channelName = window.location.pathname.split('/').slice(-1)[0]
-var channelConfig = JSON.parse(localStorage.getItem('channel-' + channelName))
-if (!channelConfig) {
-  channelConfig = {
-    name: channelName,
-    websocket: 'wss://sky-sound.hyperdev.space/subnet/' + channelName
-  }
-  localStorage.setItem('channel-' + channelName, JSON.stringify(channelConfig))
-}
-
-
-// setup database
-PouchDB.plugin(pouchdbEnsure)
-var db = new PouchDB('channel-' + channelName)
-setTimeout(() => db.viewCleanup(), 5000)
-
-
-// setup webrtc and replication
-var replicators = {}
-function setReplicator (otherMachineId, connName, datachannel) {
-  var replicator = replicators[otherMachineId] = replicators[otherMachineId] ||
-    new PouchReplicator('replicator', PouchDB, db, {batch_size: 50})
-
-  replicator.addPeer(connName, datachannel)
-  replicator.datachannels = replicator.datachannels || {}
-  replicator.datachannels[connName] = datachannel
-
-  replicator.on('endpeerreplicate', function () {
-    for (var i in replicator.datachannels) {
-      var dc = replicator.datachannels[i]
-      dc.send('<received>')
-    }
-    app.ports.replication.send([otherMachineId, '<received>'])
-  })
-
-  datachannel.addEventListener('message', e => {
-    console.log(connName + ' says: ' + e.data)
-    if (e.data === '<received>') {
-      app.ports.replication.send([otherMachineId, '<sent>'])
-      db.compact()
-    }
-  })
-}
-
-function cleanupReplicator (otherMachineId, connName) {
-  var replicator = replicators[otherMachineId]
-  if (!replicator) return
-  replicator.removePeer(connName)
-}
-
-function replicate () {
-  console.log('replicating pouchdb to', Object.keys(replicators))
-  for (var otherMachineId in replicators) {
-    console.log('> replicating pouchdb to', otherMachineId)
-
-    app.ports.replication.send([otherMachineId, '<replicating>'])
-
-    var replicator = replicators[otherMachineId]
-    replicator.replicate()
-  }
-}
-
-var webrtc = new WebRTC(channelConfig.websocket, {identifier: machineId})
-const CONNECTING = 0
-const CONNECTED = 1
-const CLOSED = 3
-webrtc.onconnecting = function (otherMachineId) {
-  app.ports.webrtc.send([otherMachineId, CONNECTING])
-}
-webrtc.onchannelready = function (datachannel, otherMachineId, connName) {
-  datachannel.addEventListener('close', e => {
-    app.ports.webrtc.send([otherMachineId, CLOSED])
-    cleanupReplicator(otherMachineId, connName)
-  })
-
-  datachannel.addEventListener('error', e => {
-    app.ports.webrtc.send([otherMachineId, CLOSED])
-    cleanupReplicator(otherMachineId, connName)
-  })
-
-  app.ports.webrtc.send([otherMachineId, CONNECTED])
-  setReplicator(otherMachineId, connName, datachannel)
-
-  replicate()
-}
-webrtc.onwsconnected = function () {
-  app.ports.websocket.send(true)
-}
-webrtc.onwsdisconnected = function () {
-  app.ports.websocket.send(false)
-
-  // try again in 2 minutes
-  setTimeout(function () { webrtc.openWebSocket() }, 120000)
-}
-
-
-// one doc in the database is sufficient to mark this channel as existing
-var allChannels = JSON.parse(localStorage.getItem('allChannels') || '{}')
-db.allDocs({limit: 1, startkey: 'A'})
-.then(res => {
-  if (res.rows.length) {
-    allChannels[channelName] = true
-    localStorage.setItem(
-      'allChannels',
-      JSON.stringify(allChannels)
-    )
-  }
-})
-
-
-// try to fetch address of a local websocket server that may be running
-localWebSocket()
-.then(address => {})
-.catch(() => {})
+/* globals db, machineId, channelConfig, replicate, allChannels
+    Elm, runElmProgram, cuid, localStorage, localWebSocket */
 
 
 // run elm app
@@ -140,9 +20,6 @@ try {
 
 
 // elm app ports
-app.ports.wsConnect.subscribe(function () {
-  webrtc.openWebSocket()
-})
 app.ports.updateCardContents.subscribe(function (data) {
   var id = data[0]
   var index = data[1]
@@ -213,7 +90,7 @@ app.ports.setUserPicture.subscribe(function (data) {
   db.get(userId)
   .catch(() => {
     // if the new user is being created, we should select him
-    localStorage.setItem('lastuser-' + channelName, name)
+    localStorage.setItem('lastuser-' + channelConfig.name, name)
 
     return {
       _id: userId,
@@ -228,16 +105,9 @@ app.ports.setUserPicture.subscribe(function (data) {
   })
   .catch(e => console.log('failed to save user with picture', e))
 })
-app.ports.setChannel.subscribe(function (channel) {
-  localStorage.setItem('channel-' + channelName, JSON.stringify(channel))
-  channelConfig = channel
-})
 
-app.ports.moveToChannel.subscribe(function (channelName) {
-  window.location.href = '/channel/' + channelName
-})
 app.ports.userSelected.subscribe(function (name) {
-  localStorage.setItem('lastuser-' + channelName, name)
+  localStorage.setItem('lastuser-' + channelConfig.name, name)
 })
 app.ports.focusField.subscribe(function (selector) {
   setTimeout(function () {
@@ -260,49 +130,10 @@ app.ports.deselectText.subscribe(function (timeout) {
 })
 
 
-// listen for db changes
-db.changes({
-  live: true,
-  include_docs: true,
-  return_docs: false
-}).on('change', function (change) {
-  if (change.doc._deleted) {
-    return
-  }
-
-  switch (change.doc._id.split('-')[0]) {
-    case 'message':
-      app.ports.pouchMessages.send(change.doc)
-      break
-    case 'card':
-      app.ports.pouchCards.send(change.doc)
-      break
-    case 'user':
-      app.ports.pouchUsers.send(change.doc)
-      break
-  }
-}).on('error', function (err) {
-  console.log('pouchdb changes error:', err)
-})
-
-
-// get information about the current user
-db.allDocs({startkey: 'user-', endkey: 'user-{', include_docs: true})
-.then(res => {
-  if (res.rows.length === 0) {
-    // do nothing.
-  } else if (res.rows.length === 1) {
-    app.ports.currentUser.send(res.rows[0].doc)
-  } else {
-    var lastUserName = localStorage.getItem('lastuser-' + channelName)
-    if (lastUserName) {
-      var found = res.rows.find(row => row.doc.name === lastUserName)
-      if (found) {
-        app.ports.currentUser.send(found.doc)
-      }
-    }
-  }
-})
+// try to fetch address of a local websocket server that may be running
+localWebSocket()
+.then(address => app.ports.websocketFound.send(address))
+.catch(() => {})
 
 
 // register service worker

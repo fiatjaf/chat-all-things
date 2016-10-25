@@ -14,7 +14,9 @@ self.addEventListener('install', function (e) {
         'https://wzrd.in/standalone/pouchdb-ensure',
         'https://cdnjs.cloudflare.com/ajax/libs/cuid/1.3.8/browser-cuid.min.js',
         'https://cdn.rawgit.com/fiatjaf/pouch-replicate-webrtc/26ee76a7b027f524d97d39c1a28f8ae037e80f15/dist/pouch-replicate-webrtc.js',
-        '/vendor/haiku.js'
+        '/vendor/haiku.js',
+        '/vendor/webrtc.js',
+        '/vendor/localdiscovery.js'
       ]))
     .then(() => self.skipWaiting())
   )
