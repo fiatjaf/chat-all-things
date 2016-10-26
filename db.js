@@ -1,13 +1,17 @@
 /* eslint-disable no-unused-vars */
-/* globals app, appready,
-    PouchDB, localStorage, haiku, pouchdbEnsure, PouchReplicator */
+/* globals app, appready */
+
+const PouchDB = window.PouchDB
+const haiku = window.haiku
+const localStorage = window.localStorage
+const PouchReplicator = window.PouchReplicator
 
 const channelConfig = require('./init').channelConfig
 const allChannels = require('./init').allChannels
 
 
 // setup database
-PouchDB.plugin(pouchdbEnsure)
+PouchDB.plugin(require('pouchdb-ensure'))
 var db = new PouchDB('channel-' + channelConfig.name)
 setTimeout(() => db.viewCleanup(), 5000)
 module.exports.db = db

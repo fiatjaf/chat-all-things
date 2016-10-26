@@ -1,5 +1,16 @@
-/* globals app, okready
-    Elm, runElmProgram, cuid, localStorage */
+/* globals app, okready Elm, runElmProgram,
+    localStorage */
+
+
+// first thing: register service worker
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.register('/serviceworker.js')
+}
+
+
+const WebTorrent = window.WebTorrent
+const DragDrop = require('drag-drop')
+const cuid = window.cuid
 
 const machineId = require('./init').machineId
 const channelConfig = require('./init').channelConfig
@@ -144,7 +155,53 @@ app.ports.deselectText.subscribe(function (timeout) {
 })
 
 
-// register service worker
-if (navigator.serviceWorker) {
-  navigator.serviceWorker.register('/serviceworker.js')
+// webtorrent
+var client = new WebTorrent()
+
+setTimeout(function () {
+  DragDrop('#chat', function (files) {
+    client.seed(files, function (torrent) {
+      app.ports.droppedFileChat.send(torrentInfo(torrent))
+    })
+  })
+  DragDrop('#cards', function (files) {
+    client.seed(files, function (torrent) {
+      app.ports.droppedFileCards.send(torrentInfo(torrent))
+    })
+  })
+}, 350)
+
+app.ports.downloadTorrent.subscribe(function (tInfo) {
+  client.add(tInfo.magnet, function (torrent) {
+    torrent.files.forEach(file => {
+      file.getBlobUrl(function (err, url) {
+        if (err) console.log(err)
+        tInfo.files[file.name].blobURL = url
+        app.ports.torrentDownload.send(tInfo)
+      })
+    })
+    torrent.on('download', () => { app.ports.torrentDownload.send(torrentInfo(torrent)) })
+    torrent.on('upload', () => { app.ports.torrentDownload.send(torrentInfo(torrent)) })
+    torrent.on('noPeers', () => { app.ports.torrentDownload.send(torrentInfo(torrent)) })
+  })
+})
+
+function torrentInfo (t, fetching) {
+  var files = {}
+  t.files.forEach(f => {
+    files[f.name] = {
+      name: f.name,
+      length: f.length
+    }
+  })
+
+  return {
+    magnet: t.magnetURI,
+    fetching: !!fetching,
+    files: files,
+    downloaded: t.downloaded,
+    progress: t.progress,
+    uploaded: t.uploaded,
+    numPeers: t.numPeers
+  }
 }

@@ -11,9 +11,9 @@ self.addEventListener('install', function (e) {
         'https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css',
         'https://cdn.rawgit.com/webrtc/adapter/5d3ce2d07d23e948d7aa9f24d96e5b0600df10e2/release/adapter.js',
         'https://cdnjs.cloudflare.com/ajax/libs/pouchdb/6.0.6/pouchdb.min.js',
-        'https://wzrd.in/standalone/pouchdb-ensure',
         'https://cdnjs.cloudflare.com/ajax/libs/cuid/1.3.8/browser-cuid.min.js',
         'https://cdn.rawgit.com/fiatjaf/pouch-replicate-webrtc/26ee76a7b027f524d97d39c1a28f8ae037e80f15/dist/pouch-replicate-webrtc.js',
+        'https://cdn.jsdelivr.net/webtorrent/latest/webtorrent.min.js',
         '/vendor/haiku.js',
         '/vendor/webrtc.js',
         '/vendor/localdiscovery.js'

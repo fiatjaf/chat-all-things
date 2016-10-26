@@ -12,10 +12,12 @@ import Debounce
 import ElmTextSearch as Search
 import Debug exposing (log)
 
-import Types exposing (Card, Message, User, Channel,
+import Types exposing (Card, Message, User, Channel, Torrent,
                        Content(..), PeerStatus(..),
-                       cardDecoder, messageDecoder, userDecoder,
-                       encodeCard, encodeContent, encodeMessage, encodeUser,
+                       cardDecoder, encodeCard,
+                       userDecoder, encodeUser,
+                       messageDecoder, encodeMessage, encodeContent,
+                       torrentDecoder, encodeTorrent,
                        Model, CardMode(..), Editing(..))
 import Helpers exposing (findIndex)
 
@@ -27,6 +29,7 @@ type Msg
     | TypeMessage String
     | SearchCard String
     | PostMessage | SelectMessage String Bool | UnselectMessages
+    | PostTorrent Torrent | AddTorrentToCard Torrent | DownloadTorrent Torrent
     | ClickCard String | UpdateCardContents Action
     | StartEditing Editing | StopEditing String
     | GotMessage Message
@@ -46,7 +49,7 @@ port setChannel : Channel -> Cmd msg
 port loadCard : String -> Cmd msg
 port updateCardContents : (String, Int, Value) -> Cmd msg
 port wsConnect : Bool -> Cmd msg
-
+port downloadTorrent : Value -> Cmd msg
 port moveToChannel : String -> Cmd msg
 port userSelected : String -> Cmd msg
 port focusField : String -> Cmd msg
@@ -143,6 +146,20 @@ update msg model =
             { model | messages =
                 List.map (\m -> { m | selected = False }) model.messages
             } ! []
+        AddTorrentToCard torrent ->
+            case model.cardMode of
+                Normal ->
+                    model ! [
+                        pouchCreate <|
+                            encodeCard "some files" (Array.fromList [ TorrentLink torrent ])
+                    ]
+                Focused card prev _ ->
+                    model ! [
+                        updateCardContents (card.id, 999, encodeTorrent torrent)
+                    ]
+                _ -> model ! []
+        PostTorrent torrent -> model ! []
+        DownloadTorrent torrent -> model ! [ downloadTorrent <| encodeTorrent torrent ]
         ClickCard id ->
             if id == "" then
                 { model | cardMode =
@@ -304,6 +321,10 @@ port pouchCards : (Value -> msg) -> Sub msg
 port pouchUsers : (Value -> msg) -> Sub msg
 port cardLoaded : (Value -> msg) -> Sub msg
 port currentUser : (Value -> msg) -> Sub msg
+port droppedFileChat : (Value -> msg) -> Sub msg
+port droppedFileCards : (Value -> msg) -> Sub msg
+port droppedTextChat : (String -> msg) -> Sub msg
+port droppedTextCards : (String -> msg) -> Sub msg
 port websocket : (Bool  -> msg) -> Sub msg
 port webrtc : ((String, Int) -> msg) -> Sub msg
 port replication : ((String, String) -> msg) -> Sub msg
@@ -323,6 +344,10 @@ subscriptions model =
             , pouchUsers <| decodeOrFail userDecoder GotUser
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
             , currentUser <| decodeOrFail userDecoder SelectUser
+            , droppedFileChat <| decodeOrFail torrentDecoder PostTorrent
+            , droppedFileCards <| decodeOrFail torrentDecoder AddTorrentToCard
+            -- , droppedTextChat PostMessage
+            -- , droppedTextCards AddTextToCard
             , websocket WebSocketState
             , webrtc WebRTCState
             , replication ReplicationState

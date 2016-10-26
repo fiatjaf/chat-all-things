@@ -3,3 +3,4 @@ elm-stuff
 *.swo
 bundle.*
 *-bundle.js
+node_modules
