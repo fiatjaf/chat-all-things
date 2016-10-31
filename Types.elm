@@ -17,7 +17,7 @@ type alias Card =
     , comments : List Message
     }
 
-type Content = Text String | Conversation (List Message) | TorrentLink Torrent
+type Content = Note String | Conversation (List Message)
 
 cardDecoder : JD.Decoder Card
 cardDecoder = JD.object4 Card
@@ -26,9 +26,8 @@ cardDecoder = JD.object4 Card
     ("contents" :=
         ( JD.array <|
             JD.oneOf
-                [ JD.object1 Text JD.string
+                [ JD.object1 Note JD.string
                 , JD.object1 Conversation <| JD.list messageDecoder
-                , JD.object1 TorrentLink <| torrentDecoder
                 ]
         )
     )
@@ -54,31 +53,40 @@ encodeContent content =
             , ("text", JE.string <| String.trim message.text)
             ]
     in case content of
-        Text text -> JE.string text
+        Note text -> JE.string text
         Conversation messages -> JE.list <| List.map encodeMessageContent messages
-        TorrentLink torrent -> encodeTorrent torrent
 
 
 type alias Message =
     { id : String
     , author : User
     , text : String
+    , torrent : Maybe Torrent
     , selected : Bool
     }
 
 messageDecoder : JD.Decoder Message
-messageDecoder = JD.object4 Message
+messageDecoder = JD.object5 Message
     ("_id" := JD.string)
     ("author" := userDecoder)
-    ("text" := JD.string)
+    (JD.oneOf [ ("text" := JD.string), JD.succeed ""])
+    (JD.maybe ("torrent" := torrentDecoder))
     (JD.succeed False)
 
-encodeMessage : User -> String -> Value
-encodeMessage author text =
-    JE.object
-        [ ("author", encodeUser author.name author.machineId author.pictureURL)
-        , ("text", JE.string text)
-        ]
+encodeMessage : User -> String -> Maybe Torrent -> Value
+encodeMessage author text t =
+    let
+        encaut = ("author", encodeUser author.name author.machineId author.pictureURL)
+    in
+        JE.object <| case t of
+            Nothing ->
+                [ encaut
+                , ("text", JE.string text)
+                ]
+            Just torrent ->
+                [ encaut
+                , ("torrent", encodeTorrent torrent)
+                ]
 
 
 type alias Torrent =

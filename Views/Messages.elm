@@ -6,9 +6,10 @@ import Html.Events exposing (..)
 import Html.Keyed as Keyed
 import Html.Lazy exposing (..)
 import Json.Decode as JD exposing ((:=))
+import Dict
 
-import Types exposing (Model, CardMode(..), Editing(..),
-                       Message)
+import Types exposing (Model, Torrent, TorrentFile,
+                       CardMode(..), Editing(..), Message)
 import State exposing (Msg(..), Action(..))
 
 
@@ -60,6 +61,14 @@ messageActionView model =
 
 messageView : Message -> Html Msg
 messageView message =
+    case message.torrent of
+        Just torrent ->
+            torrentView torrent
+        Nothing ->
+            textMessageView message
+
+textMessageView : Message -> Html Msg
+textMessageView message =
     div
         [ class <| "message" ++ if message.selected then " selected" else ""
         , id message.id
@@ -75,3 +84,29 @@ messageView message =
             ]
         ]
 
+torrentView : Torrent -> Html Msg
+torrentView t =
+    div [ class "message" ]
+        [ if t.fetching then
+            text <| "downloaded " ++ toString t.downloaded ++ " bytes."
+          else if t.progress == 1 then
+            text <| "finished downloading. uploaded " ++ toString t.uploaded ++ " bytes."
+          else
+            a [ onClick <| DownloadTorrent t ] [ text "download attachments" ]
+        , ul []
+            <| List.map (lazy torrentFileView)
+            <| Dict.values t.files
+        ]
+
+torrentFileView : TorrentFile -> Html Msg
+torrentFileView tfile =
+    li []
+        [ code [] [ text tfile.name ]
+        , text " "
+        , code [] [ text <| toString tfile.length ]
+        , text " "
+        , if tfile.blobURL == "" then
+            text ""
+          else
+            a [ href tfile.blobURL ] [ text "download" ]
+        ]

@@ -29,7 +29,7 @@ type Msg
     | TypeMessage String
     | SearchCard String
     | PostMessage | SelectMessage String Bool | UnselectMessages
-    | PostTorrent Torrent | AddTorrentToCard Torrent | DownloadTorrent Torrent
+    | PostTorrent Torrent | DownloadTorrent Torrent
     | ClickCard String | UpdateCardContents Action
     | StartEditing Editing | StopEditing String
     | GotMessage Message
@@ -92,7 +92,7 @@ update msg model =
         PostMessage ->
             let
                 text = model.typing |> String.trim
-                newmessage = pouchCreate <| encodeMessage model.me text
+                newmessage = pouchCreate <| encodeMessage model.me text Nothing
                 newcard =
                     if String.left 5 text == "/card" then
                         pouchCreate <|
@@ -146,19 +146,13 @@ update msg model =
             { model | messages =
                 List.map (\m -> { m | selected = False }) model.messages
             } ! []
-        AddTorrentToCard torrent ->
-            case model.cardMode of
-                Normal ->
-                    model ! [
-                        pouchCreate <|
-                            encodeCard "some files" (Array.fromList [ TorrentLink torrent ])
-                    ]
-                Focused card prev _ ->
-                    model ! [
-                        updateCardContents (card.id, 999, encodeTorrent torrent)
-                    ]
-                _ -> model ! []
-        PostTorrent torrent -> model ! []
+        PostTorrent torrent ->
+            ( model
+            , Cmd.batch
+                [ pouchCreate <| encodeMessage model.me "" (Just torrent)
+                , scrollChat 90
+                ]
+            )
         DownloadTorrent torrent -> model ! [ downloadTorrent <| encodeTorrent torrent ]
         ClickCard id ->
             if id == "" then
@@ -196,7 +190,7 @@ update msg model =
                             ]
                         Add ->
                             { model | cardMode = Focused
-                                { card | contents = Array.push (Text "") card.contents }
+                                { card | contents = Array.push (Note "") card.contents }
                                 prev
                                 None
                             } ! []
@@ -345,7 +339,6 @@ subscriptions model =
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
             , currentUser <| decodeOrFail userDecoder SelectUser
             , droppedFileChat <| decodeOrFail torrentDecoder PostTorrent
-            , droppedFileCards <| decodeOrFail torrentDecoder AddTorrentToCard
             -- , droppedTextChat PostMessage
             -- , droppedTextCards AddTextToCard
             , websocket WebSocketState

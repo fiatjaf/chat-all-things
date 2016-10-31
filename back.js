@@ -9,7 +9,7 @@ if (navigator.serviceWorker) {
 
 
 const WebTorrent = window.WebTorrent
-const DragDrop = require('drag-drop')
+const dragDrop = require('drag-drop')
 const cuid = window.cuid
 
 const machineId = require('./init').machineId
@@ -83,11 +83,12 @@ app.ports.updateCardContents.subscribe(function (data) {
 })
 
 app.ports.pouchCreate.subscribe(function (doc) {
-  if (doc.author && doc.text) {
+  if (doc.author && (doc.text || doc.torrent)) {
     doc._id = 'message-' + cuid()
   } else if ('name' in doc && doc.contents) {
     doc._id = 'card-' + cuid()
   } else {
+    console.log('got invalid pouchCreate:', doc)
     return
   }
 
@@ -159,14 +160,9 @@ app.ports.deselectText.subscribe(function (timeout) {
 var client = new WebTorrent()
 
 setTimeout(function () {
-  DragDrop('#chat', function (files) {
+  dragDrop('#chat', function (files) {
     client.seed(files, function (torrent) {
       app.ports.droppedFileChat.send(torrentInfo(torrent))
-    })
-  })
-  DragDrop('#cards', function (files) {
-    client.seed(files, function (torrent) {
-      app.ports.droppedFileCards.send(torrentInfo(torrent))
     })
   })
 }, 350)
