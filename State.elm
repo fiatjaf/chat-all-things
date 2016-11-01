@@ -29,7 +29,7 @@ type Msg
     | TypeMessage String
     | SearchCard String
     | PostMessage | SelectMessage String Bool | UnselectMessages
-    | PostTorrent Torrent | DownloadTorrent Torrent
+    | PostTorrent Torrent | DownloadTorrent String Torrent | UpdateTorrent String Torrent
     | ClickCard String | UpdateCardContents Action
     | StartEditing Editing | StopEditing String
     | GotMessage Message
@@ -49,7 +49,7 @@ port setChannel : Channel -> Cmd msg
 port loadCard : String -> Cmd msg
 port updateCardContents : (String, Int, Value) -> Cmd msg
 port wsConnect : Bool -> Cmd msg
-port downloadTorrent : Value -> Cmd msg
+port downloadTorrent : (String, Value) -> Cmd msg
 port moveToChannel : String -> Cmd msg
 port userSelected : String -> Cmd msg
 port focusField : String -> Cmd msg
@@ -153,7 +153,21 @@ update msg model =
                 , scrollChat 90
                 ]
             )
-        DownloadTorrent torrent -> model ! [ downloadTorrent <| encodeTorrent torrent ]
+        DownloadTorrent messageId torrent ->
+            model ! [ downloadTorrent (messageId, encodeTorrent torrent) ]
+        UpdateTorrent messageId torrent ->
+            { model | messages =
+                let
+                    mapper : Message -> Message
+                    mapper m =
+                        if m.id == messageId then
+                            case m.torrent of
+                                Nothing -> m
+                                Just torrent ->
+                                    { m | torrent = Just torrent }
+                        else m
+                in List.map mapper model.messages
+            } ! []
         ClickCard id ->
             if id == "" then
                 { model | cardMode =
@@ -319,6 +333,7 @@ port droppedFileChat : (Value -> msg) -> Sub msg
 port droppedFileCards : (Value -> msg) -> Sub msg
 port droppedTextChat : (String -> msg) -> Sub msg
 port droppedTextCards : (String -> msg) -> Sub msg
+port torrentInfo : ((String, Value) -> msg) -> Sub msg
 port websocket : (Bool  -> msg) -> Sub msg
 port webrtc : ((String, Int) -> msg) -> Sub msg
 port replication : ((String, String) -> msg) -> Sub msg
@@ -339,6 +354,7 @@ subscriptions model =
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
             , currentUser <| decodeOrFail userDecoder SelectUser
             , droppedFileChat <| decodeOrFail torrentDecoder PostTorrent
+            , torrentInfo <| \(mid, val) -> decodeOrFail torrentDecoder (UpdateTorrent mid) val
             -- , droppedTextChat PostMessage
             -- , droppedTextCards AddTextToCard
             , websocket WebSocketState

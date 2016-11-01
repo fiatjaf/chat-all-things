@@ -7,6 +7,7 @@ import Html.Keyed as Keyed
 import Html.Lazy exposing (..)
 import Json.Decode as JD exposing ((:=))
 import Dict
+import Debug exposing (log)
 
 import Types exposing (Model, Torrent, TorrentFile,
                        CardMode(..), Editing(..), Message)
@@ -61,14 +62,6 @@ messageActionView model =
 
 messageView : Message -> Html Msg
 messageView message =
-    case message.torrent of
-        Just torrent ->
-            torrentView torrent
-        Nothing ->
-            textMessageView message
-
-textMessageView : Message -> Html Msg
-textMessageView message =
     div
         [ class <| "message" ++ if message.selected then " selected" else ""
         , id message.id
@@ -80,19 +73,28 @@ textMessageView message =
         [ img [ src message.author.pictureURL ] []
         , div []
             [ strong [] [ text message.author.name ]
-            , div [ class "text" ] [ text message.text ]
+            , case message.torrent of
+                Just torrent ->
+                    torrentView message.id <| log "torrent" torrent
+                Nothing ->
+                    div [ class "text" ] [ text message.text ]
             ]
         ]
 
-torrentView : Torrent -> Html Msg
-torrentView t =
-    div [ class "message" ]
-        [ if t.fetching then
-            text <| "downloaded " ++ toString t.downloaded ++ " bytes."
-          else if t.progress == 1 then
-            text <| "finished downloading. uploaded " ++ toString t.uploaded ++ " bytes."
+torrentView : String -> Torrent -> Html Msg
+torrentView messageId t =
+    div [ class "torrent" ]
+        [ if t.progress == 1 then
+            text <| "uploaded " ++ toString (t.uploaded / 1000) ++ "kb."
+          else if t.progress == 0 then
+            a [ onClick <| DownloadTorrent messageId t ] [ text "download attachment" ]
           else
-            a [ onClick <| DownloadTorrent t ] [ text "download attachments" ]
+            span []
+                [ text "downloaded: "
+                , b [] [ text <| toString (t.downloaded / 1000) ++ "kb" ]
+                , text ". progress: "
+                , b [] [ text <| toString (t.progress * 100) ++ "%" ]
+                ]
         , ul []
             <| List.map (lazy torrentFileView)
             <| Dict.values t.files
@@ -103,10 +105,10 @@ torrentFileView tfile =
     li []
         [ code [] [ text tfile.name ]
         , text " "
-        , code [] [ text <| toString tfile.length ]
+        , code [] [ text <| toString (tfile.length / 1000) ++ "kb" ]
         , text " "
         , if tfile.blobURL == "" then
             text ""
           else
-            a [ href tfile.blobURL ] [ text "download" ]
+            a [ href tfile.blobURL, downloadAs tfile.name ] [ text "download" ]
         ]

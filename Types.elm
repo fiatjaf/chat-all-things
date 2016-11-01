@@ -92,20 +92,18 @@ encodeMessage author text t =
 type alias Torrent =
     { magnet : String
     , files : Dict String TorrentFile
-    , fetching : Bool
-    , downloaded : Int
-    , uploaded : Int
+    , downloaded : Float
+    , uploaded : Float
     , progress : Float
     , numPeers : Int
     }
 
 torrentDecoder : JD.Decoder Torrent
-torrentDecoder = JD.object7 Torrent
+torrentDecoder = JD.object6 Torrent
     ("magnet" := JD.string)
     ("files" := JD.dict torrentFileDecoder)
-    (JD.oneOf [ ("fetching" := JD.bool), JD.succeed False ])
-    (JD.oneOf [ ("downloaded" := JD.int), JD.succeed 0 ])
-    (JD.oneOf [ ("uploaded" := JD.int), JD.succeed 0 ])
+    (JD.oneOf [ ("downloaded" := JD.float), JD.succeed 0 ])
+    (JD.oneOf [ ("uploaded" := JD.float), JD.succeed 0 ])
     (JD.oneOf [ ("progress" := JD.float), JD.succeed 0 ])
     (JD.oneOf [ ("numPeers" := JD.int), JD.succeed 0 ])
 
@@ -121,21 +119,21 @@ encodeTorrent torrent =
 
 type alias TorrentFile =
     { name : String
-    , length : Int
+    , length : Float
     , blobURL : String
     }
 
 torrentFileDecoder : JD.Decoder TorrentFile
 torrentFileDecoder = JD.object3 TorrentFile
     ("name" := JD.string)
-    ("length" := JD.int)
+    ("length" := JD.float)
     (JD.oneOf [ ("blobURL" := JD.string), JD.succeed "" ])
 
 encodeTorrentFile : TorrentFile -> Value
 encodeTorrentFile tfile =
     JE.object
         [ ("name", JE.string tfile.name)
-        , ("length", JE.int tfile.length)
+        , ("length", JE.float tfile.length)
         ]
 
 type alias User =

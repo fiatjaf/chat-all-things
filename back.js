@@ -162,23 +162,28 @@ var client = new WebTorrent()
 setTimeout(function () {
   dragDrop('#chat', function (files) {
     client.seed(files, function (torrent) {
-      app.ports.droppedFileChat.send(torrentInfo(torrent))
+      var tInfo = torrentInfo(torrent)
+      tInfo.progress = 1
+      app.ports.droppedFileChat.send(tInfo)
     })
   })
 }, 350)
 
-app.ports.downloadTorrent.subscribe(function (tInfo) {
+app.ports.downloadTorrent.subscribe(function (data) {
+  var messageId = data[0]
+  var tInfo = data[1]
   client.add(tInfo.magnet, function (torrent) {
     torrent.files.forEach(file => {
       file.getBlobUrl(function (err, url) {
-        if (err) console.log(err)
+        if (err) return console.log('failed to fetch blob url', err)
+        tInfo = torrentInfo(torrent)
         tInfo.files[file.name].blobURL = url
-        app.ports.torrentDownload.send(tInfo)
+        app.ports.torrentInfo.send([messageId, tInfo])
       })
     })
-    torrent.on('download', () => { app.ports.torrentDownload.send(torrentInfo(torrent)) })
-    torrent.on('upload', () => { app.ports.torrentDownload.send(torrentInfo(torrent)) })
-    torrent.on('noPeers', () => { app.ports.torrentDownload.send(torrentInfo(torrent)) })
+    torrent.on('download', () => { app.ports.torrentInfo.send([messageId, torrentInfo(torrent)]) })
+    torrent.on('upload', () => { app.ports.torrentInfo.send([messageId, torrentInfo(torrent)]) })
+    torrent.on('noPeers', () => { app.ports.torrentInfo.send([messageId, torrentInfo(torrent)]) })
   })
 })
 
@@ -193,7 +198,6 @@ function torrentInfo (t, fetching) {
 
   return {
     magnet: t.magnetURI,
-    fetching: !!fetching,
     files: files,
     downloaded: t.downloaded,
     progress: t.progress,
