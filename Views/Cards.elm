@@ -24,25 +24,14 @@ cardsView model =
             [ lazy2 fullCardView card editing
             , div [ class "back", onClick <| ClickCard "" ] []
             ]
-    SearchResults query ids ->
+    SearchResults cards ->
         div [ id "searching" ] <|
-            if List.length ids == 0 then
-                [ b [] [ text <| "no cards were found for '" ++ query ++ "'." ]
-                , hr [] []
-                , Keyed.node "div" [ id "cardlist" ]
-                    (model.cards
-                        |> List.take 10
-                        |> List.map (\c -> (c.id, lazy briefCardView c))
-                    )
-                ]
-            else
-                [ b [] [ text <| "search results for '" ++ query ++ "':" ]
-                , Keyed.node "div" [ id "cardlist" ]
-                    (model.cards
-                        |> List.filter (\c -> List.any ((==) c.id) ids)
-                        |> List.map (\c -> (c.id, lazy briefCardView c))
-                    )
-                ]
+            [ b [] [ text <| "search results:" ]
+            , Keyed.node "div" [ id "cardlist" ]
+                (cards
+                    |> List.map (\c -> (c.id, lazy briefCardView c))
+                )
+            ]
     _ ->
         Keyed.node "div" [ id "cardlist" ]
             (model.cards

@@ -8,8 +8,6 @@ import Html.Lazy exposing (..)
 import Dict
 import Platform.Cmd as Cmd
 import Navigation exposing (Location)
-import Debounce
-import ElmTextSearch as Search
 
 import State exposing (update, subscriptions,
                        Msg(..), Action(..))
@@ -36,19 +34,8 @@ init flags _ =
     , typing = ""
     , prevTyping = ""
     , cardMode = Normal
-    , cardSearchIndex =
-        Search.new
-            { ref = .id
-            , fields =
-                [ ( .name, 5.0 )
-                ]
-            , listFields =
-                [ ( .comments >> List.map .text, 1.0 )
-                ]
-            }
     , websocket = False
     , webrtc = Dict.empty
-    , debouncer = Debounce.init
     } ! []
 
 

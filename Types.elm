@@ -4,10 +4,8 @@ import Json.Decode as JD exposing ((:=))
 import Json.Encode as JE exposing (Value)
 import Dict exposing (Dict)
 import Time exposing (Time)
-import ElmTextSearch as Search
 import Array exposing (Array)
 import String
-import Debounce
 
 
 type alias Card =
@@ -189,13 +187,11 @@ type alias Model =
     , typing : String
     , prevTyping : String
     , cards : List Card
-    , cardSearchIndex : Search.Index Card
     , cardMode : CardMode
     , users : List User
     , websocket : Bool
     , webrtc : Dict String PeerStatus
-    , debouncer : Debounce.State
     }
 
-type CardMode = Normal | SearchResults String (List String) | Focused Card CardMode Editing
+type CardMode = Normal | SearchResults (List Card) | Focused Card CardMode Editing
 type Editing = None | Name | Content Int

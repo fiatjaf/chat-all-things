@@ -5,14 +5,18 @@ const PouchDB = window.PouchDB
 const haiku = window.haiku
 const localStorage = window.localStorage
 const PouchReplicator = window.PouchReplicator
+const md5 = require('pouchdb-md5').stringMd5
+const throttleit = require('throttleit')
 
 const channelConfig = require('./init').channelConfig
 const allChannels = require('./init').allChannels
 
 
 // setup database
+PouchDB.debug.enable('*')
 PouchDB.plugin(require('pouchdb-ensure'))
-var db = new PouchDB('channel-' + channelConfig.name)
+const dbname = 'channel-' + channelConfig.name
+var db = new PouchDB(dbname)
 setTimeout(() => db.viewCleanup(), 5000)
 module.exports.db = db
 
@@ -127,4 +131,61 @@ appready(() => {
   }).on('error', function (err) {
     console.log('pouchdb changes error:', err)
   })
+})
+
+
+// setup card search
+PouchDB.plugin(require('pouchdb-quick-search'))
+var searchdb
+var emit // satisfying eslint
+var mapfun = function (doc) {
+  if (doc._id.split('-')[0] === 'card') {
+    if (doc.name) {
+      emit(null, {id: doc._id, n: doc.name}) // name
+    }
+
+    for (var i = 0; i < doc.contents.length; i++) {
+      var content = doc.contents[i]
+      if (typeof content === 'string') {
+        emit(null, {id: doc._id, c: content}) // content
+      } else if (content.text) {
+        emit(null, {id: doc._id, m: content.text}) // message
+      }
+    }
+  }
+}.toString()
+db.ensure({
+  _id: '_design/cardsearch',
+  views: {
+    cardsearch: {
+      map: mapfun
+    }
+  }
+})
+.then(() => {
+  db.query('cardsearch')
+  searchdb = new PouchDB(dbname + '-mrview-' + md5(mapfun + 'undefined' + 'undefined'))
+})
+appready(() => {
+  app.ports.searchCard.subscribe(throttleit(function (searchquery) {
+    var termcount = searchquery.split(/ +/g).length
+
+    searchdb.search({
+      query: searchquery,
+      fields: {
+        'value.n': 5,
+        'value.c': 4,
+        'value.m': 2
+      },
+      include_docs: true,
+      mm: parseInt(100 / termcount) + '%'
+    })
+    .then(res => {
+      return db.allDocs({keys: res.rows.map(row => row.doc.value.id), include_docs: true})
+    })
+    .then(res => {
+      app.ports.searchedCard.send(res.rows.map(row => row.doc))
+    })
+    .catch(e => console.log('search failed', e))
+  }), 400)
 })

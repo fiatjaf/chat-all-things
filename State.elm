@@ -8,8 +8,6 @@ import Json.Decode as JD exposing ((:=), decodeValue)
 import Json.Encode as JE exposing (Value)
 import Platform.Cmd as Cmd
 import Json.Encode as JE exposing (Value)
-import Debounce
-import ElmTextSearch as Search
 import Debug exposing (log)
 
 import Types exposing (Card, Message, User, Channel, Torrent,
@@ -24,10 +22,9 @@ import Helpers exposing (findIndex)
 -- UPDATE
 
 type Msg
-    = Deb (Debounce.Msg Msg)
-    | OpenMenu String
+    = OpenMenu String
     | TypeMessage String
-    | SearchCard String
+    | SearchedCard (List Card)
     | PostMessage | SelectMessage String Bool | UnselectMessages
     | PostTorrent Torrent | DownloadTorrent String Torrent | UpdateTorrent String Torrent
     | ClickCard String | UpdateCardContents Action
@@ -47,6 +44,7 @@ port pouchCreate : Value -> Cmd msg
 port setUserPicture : (String, String) -> Cmd msg
 port setChannel : Channel -> Cmd msg
 port loadCard : String -> Cmd msg
+port searchCard : String -> Cmd msg
 port updateCardContents : (String, Int, Value) -> Cmd msg
 port wsConnect : Bool -> Cmd msg
 port downloadTorrent : (String, Value) -> Cmd msg
@@ -59,14 +57,13 @@ port deselectText : Int -> Cmd msg
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        Deb a -> Debounce.update debCfg a model
         OpenMenu menu -> { model | menu = menu } ! []
         TypeMessage v ->
             let
                 search = 
                     case model.cardMode of
                         Focused _ _ _ -> Cmd.none
-                        _ -> Debounce.debounceCmd debCfg <| SearchCard v
+                        _ -> searchCard v
                 vlen = String.length v
             in
                 if model.typing == "" && vlen > 1 then
@@ -76,19 +73,11 @@ update msg model =
                         { model | typing = v, prevTyping = model.typing } ! [ search ]
                 else
                     { model | typing = v, prevTyping = model.typing } ! [ search ]
-        SearchCard v ->
-            if v == "" then
+        SearchedCard cards ->
+            if List.length cards == 0 then
                 { model | cardMode = Normal } ! []
             else
-                case Search.search v model.cardSearchIndex of
-                    Err e ->
-                        let _ = log "error searching" e
-                        in (model, Cmd.none)
-                    Ok (index, results) ->
-                        { model
-                            | cardSearchIndex = index
-                            , cardMode = SearchResults v (List.map fst results)
-                        } ! []
+                { model | cardMode = SearchResults cards } ! []
         PostMessage ->
             let
                 text = model.typing |> String.trim
@@ -104,7 +93,7 @@ update msg model =
                     , prevTyping = model.typing
                     , cardMode =
                         case model.cardMode of
-                            SearchResults _ _ -> Normal
+                            SearchResults _ -> Normal
                             _ -> model.cardMode
                 } ! [ newmessage, newcard, scrollChat 90 ]
         SelectMessage id shiftPressed ->
@@ -227,10 +216,6 @@ update msg model =
                     case model.cardMode of
                         Focused _ prev  _ -> Focused card prev None
                         _ -> model.cardMode
-                , cardSearchIndex =
-                    case Search.addOrUpdate card model.cardSearchIndex of
-                        Ok index -> index
-                        Err _ -> model.cardSearchIndex
             } ! []
         AddToCard id messages ->
             { model | messages = List.map (\m -> { m | selected = False }) model.messages }
@@ -329,6 +314,7 @@ port pouchCards : (Value -> msg) -> Sub msg
 port pouchUsers : (Value -> msg) -> Sub msg
 port cardLoaded : (Value -> msg) -> Sub msg
 port currentUser : (Value -> msg) -> Sub msg
+port searchedCard : (Value -> msg) -> Sub msg
 port droppedFileChat : (Value -> msg) -> Sub msg
 port droppedFileCards : (Value -> msg) -> Sub msg
 port droppedTextChat : (String -> msg) -> Sub msg
@@ -353,6 +339,7 @@ subscriptions model =
             , pouchUsers <| decodeOrFail userDecoder GotUser
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
             , currentUser <| decodeOrFail userDecoder SelectUser
+            , searchedCard <| decodeOrFail (JD.list cardDecoder) SearchedCard
             , droppedFileChat <| decodeOrFail torrentDecoder PostTorrent
             , torrentInfo <| \(mid, val) -> decodeOrFail torrentDecoder (UpdateTorrent mid) val
             -- , droppedTextChat PostMessage
@@ -365,7 +352,3 @@ subscriptions model =
 
 
 tickInterval = Time.second * 10
-
-debCfg : Debounce.Config Model Msg
-debCfg = Debounce.config .debouncer (\m s -> { m | debouncer = s }) Deb 400
-
