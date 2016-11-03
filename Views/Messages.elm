@@ -7,6 +7,7 @@ import Html.Keyed as Keyed
 import Html.Lazy exposing (..)
 import Json.Decode as JD exposing ((:=))
 import Dict
+import Markdown
 import Debug exposing (log)
 
 import Types exposing (Model, Torrent, TorrentFile,
@@ -77,7 +78,7 @@ messageView message =
                 Just torrent ->
                     torrentView message.id <| log "torrent" torrent
                 Nothing ->
-                    div [ class "text" ] [ text message.text ]
+                    Markdown.toHtml [ class "text" ] message.text
             ]
         ]
 
