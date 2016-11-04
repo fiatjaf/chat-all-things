@@ -15,7 +15,7 @@ const allChannels = require('./init').allChannels
 PouchDB.debug.enable('*')
 PouchDB.plugin(require('pouchdb-ensure'))
 const dbname = 'channel-' + window.channelConfig.name
-var db = new PouchDB(dbname)
+var db = window.db = new PouchDB(dbname)
 setTimeout(() => db.viewCleanup(), 5000)
 module.exports.db = db
 

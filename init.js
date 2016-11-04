@@ -27,7 +27,16 @@ if (!window.channelConfig.websocket) {
     : defaultWebSocketURL
 }
 window.channelConfig.name = channelName
-window.channelConfig.couch = window.channelConfig.couch || ''
+if (window.channelConfig.couch) {
+  appready(() => {
+    window.couchdbsync = window.db.sync(window.channelConfig.couch, {
+      live: true,
+      retry: true
+    }).on('error', function (e) { console.log('couch replication error', e) })
+  })
+} else {
+  window.channelConfig.couch = ''
+}
 module.exports.channelConfig = window.channelConfig
 
 
@@ -41,6 +50,16 @@ appready(() => {
   app.ports.setChannel.subscribe(function (channel) {
     localStorage.setItem('channel-' + window.channelConfig.name, JSON.stringify(channel))
     window.channelConfig = channel
+
+    if (channel.couch !== window.channelConfig.couch) {
+      if (window.couchdbsync) {
+        window.couchdbsync.cancel()
+      }
+      window.couchdbsync = window.db.sync(window.channelConfig.couch, {
+        live: true,
+        retry: true
+      }).on('error', function (e) { console.log('couch replication error', e) })
+    }
   })
   app.ports.moveToChannel.subscribe(function (toChannel) {
     window.location.href = '/channel/' + toChannel

@@ -40,10 +40,6 @@ if (ok) okready()
 
 function replicate () {
   channelManager.replicate()
-
-  if (window.channelConfig.couch) {
-    db.sync(window.channelConfig.couch)
-  }
 }
 
 
