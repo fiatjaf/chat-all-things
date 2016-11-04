@@ -162,6 +162,7 @@ encodeUser name machineId pictureURL =
 type alias Channel =
     { name : String
     , websocket : String
+    , couch : String
     }
 
 

@@ -33,7 +33,7 @@ type Msg
     | AddToCard String (List Message) | AddToNewCard (List Message)
     | GotCard Card | FocusCard Card
     | GotUser User | SelectUser User | SetUser String String
-    | SelectChannel String | SetChannel String
+    | SelectChannel String | SetChannel String String
     | ConnectWebSocket | WebSocketState Bool | WebRTCState (String, Int) | ReplicationState (String, String)
     | Tick Time
     | NoOp String
@@ -243,9 +243,9 @@ update msg model =
         SelectUser user -> { model | me = user } ! [ userSelected user.name ]
         SetUser name pictureURL ->
             model ! [ setUserPicture (name, pictureURL) ]
-        SetChannel wsurl ->
+        SetChannel wsurl couchurl ->
             let
-                channel = Channel model.channel.name wsurl
+                channel = Channel model.channel.name wsurl couchurl
             in
                 { model | channel = channel } ! [ setChannel channel ]
         SelectChannel channelName -> model ! [ moveToChannel channelName ]

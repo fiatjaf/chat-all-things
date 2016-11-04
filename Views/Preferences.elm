@@ -44,13 +44,18 @@ channelConfigView allChannels channel webrtc =
             ]
         , node "form"
             [ class "config-form"
-            , onWithOptions "submit" (Options True True) <| object1
+            , onWithOptions "submit" (Options True True) <| object2
                 SetChannel
-                (at [ "target", "firstElementChild", "firstElementChild", "value" ] string)
+                (at [ "target", "firstChild", "firstElementChild", "value" ] string)
+                (at [ "target", "firstChild", "nextSibling", "firstElementChild", "value" ] string)
             ]
             [ label []
                 [ text "Websocket: "
-                , input [ value channel.websocket ] []
+                , input [ defaultValue channel.websocket ] []
+                ]
+            , label []
+                [ text "CouchDB URL: "
+                , input [ defaultValue channel.couch ] []
                 ]
             , button [] [ text "Set" ]
             ]
@@ -104,8 +109,8 @@ userConfigView users user =
             [ class "config-form"
             , onWithOptions "submit" (Options True True) <| object2
                 SetUser
-                (at [ "target", "firstElementChild", "firstElementChild", "value" ] string)
-                (at [ "target", "firstElementChild", "nextSibling", "firstElementChild", "value" ] string)
+                (at [ "target", "firstChild", "firstElementChild", "value" ] string)
+                (at [ "target", "firstChild", "nextSibling", "firstElementChild", "value" ] string)
             ]
             [ label []
                 [ text "Name: "

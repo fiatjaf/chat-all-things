@@ -2,12 +2,11 @@
     WebRTC */
 
 const machineId = require('./init').machineId
-const channelConfig = require('./init').channelConfig
 const channelManager = require('./db').channelManager
 
 
 // setup webrtc
-var webrtc = new WebRTC(channelConfig.websocket, {identifier: machineId})
+var webrtc = new WebRTC(window.channelConfig.websocket, {identifier: machineId})
 module.exports.webrtc = webrtc
 const CONNECTING = 0
 const CONNECTED = 1

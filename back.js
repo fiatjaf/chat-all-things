@@ -13,7 +13,6 @@ const dragDrop = require('drag-drop')
 const cuid = window.cuid
 
 const machineId = require('./init').machineId
-const channelConfig = require('./init').channelConfig
 const allChannels = require('./init').allChannels
 const db = require('./db').db
 const channelManager = require('./db').channelManager
@@ -24,7 +23,7 @@ var ok
 try {
   window.app = Elm.App.fullscreen({
     machineId: machineId,
-    channel: channelConfig,
+    channel: window.channelConfig,
     allChannels: Object.keys(allChannels)
   })
   ok = true
@@ -41,6 +40,10 @@ if (ok) okready()
 
 function replicate () {
   channelManager.replicate()
+
+  if (window.channelConfig.couch) {
+    db.sync(window.channelConfig.couch)
+  }
 }
 
 
@@ -116,7 +119,7 @@ app.ports.setUserPicture.subscribe(function (data) {
   db.get(userId)
   .catch(() => {
     // if the new user is being created, we should select him
-    localStorage.setItem('lastuser-' + channelConfig.name, name)
+    localStorage.setItem('lastuser-' + window.channelConfig.name, name)
 
     return {
       _id: userId,
@@ -133,7 +136,7 @@ app.ports.setUserPicture.subscribe(function (data) {
 })
 
 app.ports.userSelected.subscribe(function (name) {
-  localStorage.setItem('lastuser-' + channelConfig.name, name)
+  localStorage.setItem('lastuser-' + window.channelConfig.name, name)
 })
 app.ports.focusField.subscribe(function (selector) {
   setTimeout(function () {

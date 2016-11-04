@@ -8,14 +8,13 @@ const PouchReplicator = window.PouchReplicator
 const md5 = require('pouchdb-md5').stringMd5
 const throttleit = require('throttleit')
 
-const channelConfig = require('./init').channelConfig
 const allChannels = require('./init').allChannels
 
 
 // setup database
 PouchDB.debug.enable('*')
 PouchDB.plugin(require('pouchdb-ensure'))
-const dbname = 'channel-' + channelConfig.name
+const dbname = 'channel-' + window.channelConfig.name
 var db = new PouchDB(dbname)
 setTimeout(() => db.viewCleanup(), 5000)
 module.exports.db = db
@@ -78,7 +77,7 @@ module.exports.channelManager = new ChannelManager()
 db.allDocs({limit: 1, startkey: 'A'})
 .then(res => {
   if (res.rows.length) {
-    allChannels[channelConfig.name] = true
+    allChannels[window.channelConfig.name] = true
     localStorage.setItem(
       'allChannels',
       JSON.stringify(allChannels)
@@ -95,7 +94,7 @@ db.allDocs({startkey: 'user-', endkey: 'user-{', include_docs: true})
   } else if (res.rows.length === 1) {
     app.ports.currentUser.send(res.rows[0].doc)
   } else {
-    var lastUserName = localStorage.getItem('lastuser-' + channelConfig.name)
+    var lastUserName = localStorage.getItem('lastuser-' + window.channelConfig.name)
     if (lastUserName) {
       var found = res.rows.find(row => row.doc.name === lastUserName)
       if (found) {
