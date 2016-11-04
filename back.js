@@ -98,6 +98,15 @@ app.ports.pouchCreate.subscribe(function (doc) {
     if (doc._id.split('-')[0] === 'card') app.ports.cardLoaded.send(doc)
   })
 })
+app.ports.deleteCard.subscribe(function (id) {
+  db.get(id, function (err, doc) {
+    if (err) {
+      console.log('could not get doc to delete:', id)
+    } else {
+      db.remove(doc)
+    }
+  })
+})
 app.ports.loadCard.subscribe(function (id) {
   db.get(id, function (err, doc) {
     if (err) {

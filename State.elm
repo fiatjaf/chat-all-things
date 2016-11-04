@@ -27,7 +27,7 @@ type Msg
     | SearchedCard (List Card)
     | PostMessage | SelectMessage String Bool | UnselectMessages
     | PostTorrent Torrent | DownloadTorrent String Torrent | UpdateTorrent String Torrent
-    | ClickCard String | UpdateCardContents Action
+    | ClickCard String | UpdateCardContents Action | DeleteCard
     | StartEditing Editing | StopEditing String
     | GotMessage Message
     | AddToCard String (List Message) | AddToNewCard (List Message)
@@ -41,6 +41,7 @@ type Msg
 type Action = Add | Edit Int Content | Delete Int
 
 port pouchCreate : Value -> Cmd msg
+port deleteCard : String -> Cmd msg
 port setUserPicture : (String, String) -> Cmd msg
 port setChannel : Channel -> Cmd msg
 port loadCard : String -> Cmd msg
@@ -200,6 +201,15 @@ update msg model =
                         Delete index ->
                             model !
                             [ updateCardContents (card.id, index, JE.null) ]
+                _ -> model ! []
+        DeleteCard ->
+            case model.cardMode of
+                Focused card prev _ ->
+                    { model
+                        | cardMode = prev
+                        , cards = List.filter (.id >> (/=) card.id) model.cards
+                    }
+                    ! [ deleteCard card.id ]
                 _ -> model ! []
         FocusCard card ->
             { model | cardMode = Focused card model.cardMode None } ! []

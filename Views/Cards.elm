@@ -62,25 +62,32 @@ briefCardContentView content =
 fullCardView : Card -> Editing -> Html Msg
 fullCardView card editing =
     div [ class "card", id card.id ]
-        [ div [ class "name" ] <|
-            case editing of
-                Name ->
-                    [ input
-                        [ on "blur"
-                            <| JD.object1 StopEditing
-                                (JD.at [ "target", "value" ] JD.string)
-                        , value card.name
-                        ] [ text "" ]
-                    ]
-                _ ->
-                    [ b
-                        [ onClick <| StartEditing Name
-                        , if card.name == "" then
-                            property "innerHTML" (JE.string "&nbsp;&nbsp;&nbsp;")
-                          else style []
-                        ] [ text card.name ]
-                    , span [] [ text <| "#" ++ (String.right 5 card.id) ]
-                    ]
+        [ header []
+            [ div [ class "name" ] <|
+                case editing of
+                    Name ->
+                        [ input
+                            [ on "blur"
+                                <| JD.object1 StopEditing
+                                    (JD.at [ "target", "value" ] JD.string)
+                            , value card.name
+                            ] [ text "" ]
+                        ]
+                    _ ->
+                        [ b
+                            [ onClick <| StartEditing Name
+                            , if card.name == "" then
+                                property "innerHTML" (JE.string "&nbsp;&nbsp;&nbsp;")
+                              else style []
+                            ] [ text card.name ]
+                        , span [] [ text <| "#" ++ (String.right 5 card.id) ]
+                        ]
+            , a
+                [ class "delete ion-trash-a"
+                , title "delete"
+                , onClick DeleteCard
+                ] [ text "" ]
+            ]
         , div [ class "contents" ]
             <| Array.toList
             <| Array.indexedMap (cardContentView card) card.contents

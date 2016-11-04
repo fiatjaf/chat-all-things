@@ -4,6 +4,7 @@ $white = whitesmoke
 $black = #1C140D
 $back1 = #F2E9E1
 $back2 = #CBE86B
+$red = #d44a4a
 
 *
   box-sizing border-box
@@ -265,6 +266,19 @@ main
     top 0
     left 10%
     width 80%
+
+    header
+      .delete
+        color $red
+        position absolute
+        right 16px
+        top 10px
+        opacity 0.6
+        &:hover
+          opacity 1
+          text-shadow 1px 1px 1px #aaa
+        &:active
+          text-shadow none
 
     .content
       background-color $white
