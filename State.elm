@@ -7,6 +7,8 @@ import Time exposing (Time)
 import Json.Decode as JD exposing ((:=), decodeValue)
 import Json.Encode as JE exposing (Value)
 import Platform.Cmd as Cmd
+import Cmd.Extra
+import List.Extra
 import Json.Encode as JE exposing (Value)
 import Debug exposing (log)
 
@@ -31,7 +33,7 @@ type Msg
     | StartEditing Editing | StopEditing String
     | GotMessage Message
     | AddToCard String (List Message) | AddToNewCard (List Message)
-    | GotCard Card | FocusCard Card
+    | GotCard Card | CardDeleted String | FocusCard Card
     | GotUser User | SelectUser User | SetUser String String
     | SelectChannel String | SetChannel String String
     | ConnectWebSocket | WebSocketState Bool | WebRTCState (String, Int) | ReplicationState (String, String)
@@ -82,12 +84,23 @@ update msg model =
         PostMessage ->
             let
                 text = model.typing |> String.trim
-                newmessage = pouchCreate <| encodeMessage model.me text Nothing
                 newcard =
-                    if String.left 5 text == "/card" then
+                    if String.left 6 text == "/card " then
                         pouchCreate <|
                             encodeCard (String.dropLeft 5 text) Array.empty
                     else Cmd.none
+                deletecard = 
+                    if String.left 9 text == "/delete #" then
+                        let
+                            typed = String.right 5 text
+                            match = List.Extra.find (.id >> String.right 5 >> (==) typed)
+                        in
+                            case match model.cards of
+                                Just card -> deleteCard card.id
+                                Nothing -> Cmd.none
+                    else
+                        Cmd.none
+                newmessage = pouchCreate <| encodeMessage model.me text Nothing
             in
                 { model
                     | typing = ""
@@ -96,7 +109,7 @@ update msg model =
                         case model.cardMode of
                             SearchResults _ -> Normal
                             _ -> model.cardMode
-                } ! [ newmessage, newcard, scrollChat 90 ]
+                } ! [ newmessage, newcard, deletecard, scrollChat 90 ]
         SelectMessage id shiftPressed ->
             if shiftPressed then
                 let
@@ -207,9 +220,13 @@ update msg model =
                 Focused card prev _ ->
                     { model
                         | cardMode = prev
-                        , cards = List.filter (.id >> (/=) card.id) model.cards
-                    }
-                    ! [ deleteCard card.id ]
+                    } !
+                    [ pouchCreate <| encodeMessage
+                        model.me
+                        ("/delete #" ++ (String.right 5 card.id))
+                        Nothing
+                    , deleteCard card.id
+                    ]
                 _ -> model ! []
         FocusCard card ->
             { model | cardMode = Focused card model.cardMode None } ! []
@@ -226,6 +243,11 @@ update msg model =
                     case model.cardMode of
                         Focused _ prev  _ -> Focused card prev None
                         _ -> model.cardMode
+            } ! []
+        CardDeleted cardId ->
+            { model
+                | cards = List.filter (.id >> (/=) cardId) model.cards
+                , cardMode = Normal
             } ! []
         AddToCard id messages ->
             { model | messages = List.map (\m -> { m | selected = False }) model.messages }
@@ -322,6 +344,7 @@ update msg model =
 port pouchMessages : (Value -> msg) -> Sub msg
 port pouchCards : (Value -> msg) -> Sub msg
 port pouchUsers : (Value -> msg) -> Sub msg
+port cardDeleted : (String -> msg) -> Sub msg
 port cardLoaded : (Value -> msg) -> Sub msg
 port currentUser : (Value -> msg) -> Sub msg
 port searchedCard : (Value -> msg) -> Sub msg
@@ -347,6 +370,7 @@ subscriptions model =
             [ pouchMessages <| decodeOrFail messageDecoder GotMessage
             , pouchCards <| decodeOrFail cardDecoder GotCard
             , pouchUsers <| decodeOrFail userDecoder GotUser
+            , cardDeleted CardDeleted
             , cardLoaded <| decodeOrFail cardDecoder FocusCard
             , currentUser <| decodeOrFail userDecoder SelectUser
             , searchedCard <| decodeOrFail (JD.list cardDecoder) SearchedCard

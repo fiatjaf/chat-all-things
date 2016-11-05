@@ -113,7 +113,11 @@ appready(() => {
     return_docs: false
   }).on('change', function (change) {
     if (change.doc._deleted) {
-      return
+      switch (change.doc._id.split('-')[0]) {
+        case 'card':
+          app.ports.cardDeleted.send(change.doc._id)
+          break
+      }
     }
 
     switch (change.doc._id.split('-')[0]) {
